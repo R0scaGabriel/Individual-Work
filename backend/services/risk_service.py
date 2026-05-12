@@ -163,7 +163,9 @@ def calculate_risk(
         raw_hazard = _hazard_unit(disaster_type, values)
         calculation_engine = "python_fallback"
 
-    evidence_gate = _evidence_gate(disaster_type, values)
+    evidence_gate = _evidence_gate(disaster_type, values, raw_values)
+    if evidence_gate.get("triggered") and evidence_gate.get("hazard_cap") is not None:
+        raw_hazard = min(raw_hazard, float(evidence_gate["hazard_cap"]))
     calibration = calibrate_probability(
         disaster_type,
         raw_hazard,
@@ -276,6 +278,13 @@ def _try_compile_engine() -> None:
 
 def _unit(value: float) -> float:
     return max(0.0, min(100.0, float(value))) / 100.0
+
+
+def _raw_number(raw_values: dict[str, dict[str, Any]], key: str, default: float = 0.0) -> float:
+    try:
+        return float((raw_values.get(key) or {}).get("value", default) or default)
+    except (TypeError, ValueError):
+        return default
 
 
 def _clamp_unit(value: float) -> float:
@@ -422,16 +431,27 @@ def _exposure_vulnerability_factor(disaster_type: str, values: list[float], cont
     return 1.0
 
 
-def _evidence_gate(disaster_type: str, values: list[float]) -> dict[str, Any]:
+def _evidence_gate(
+    disaster_type: str,
+    values: list[float],
+    raw_values: dict[str, dict[str, Any]] | None = None,
+) -> dict[str, Any]:
     units = [_unit(value) for value in values]
-    gate = {"triggered": False, "reason": "", "chance_multiplier": 1.0, "overall_cap": 100}
+    raw_values = raw_values or {}
+    gate = {"triggered": False, "reason": "", "chance_multiplier": 1.0, "overall_cap": 100, "hazard_cap": None}
 
-    def triggered(reason: str, chance_multiplier: float = 0.65, overall_cap: float = 25) -> dict[str, Any]:
+    def triggered(
+        reason: str,
+        chance_multiplier: float = 0.65,
+        overall_cap: float = 25,
+        hazard_cap: float | None = None,
+    ) -> dict[str, Any]:
         return {
             "triggered": True,
             "reason": reason,
             "chance_multiplier": chance_multiplier,
             "overall_cap": overall_cap,
+            "hazard_cap": hazard_cap,
         }
 
     if disaster_type == "flood":
@@ -444,10 +464,18 @@ def _evidence_gate(disaster_type: str, values: list[float]) -> dict[str, Any]:
             return triggered("Wildfire trigger is weak because fuel dryness is low and no active-fire proximity is configured.", 0.55, 24)
     elif disaster_type == "drought":
         precipitation_deficit, _soil_deficit, _temperature_anomaly, dry_days = units
+        recent_rain_7d = _raw_number(raw_values, "recent_precipitation_7d")
+        if recent_rain_7d > 0:
+            return triggered(
+                f"Drought score is capped at Low because {recent_rain_7d:.1f} mm of rain was recorded in the last 7 days.",
+                0.35,
+                25,
+                0.24,
+            )
         if precipitation_deficit < 0.25 and dry_days < 0.20:
-            return triggered("Drought trigger is weak because recent rain/dry-day evidence does not support drought development.", 0.45, 18)
+            return triggered("Drought trigger is weak because recent rain/dry-day evidence does not support drought development.", 0.45, 18, 0.18)
         if dry_days < 0.10 and precipitation_deficit < 0.60:
-            return triggered("Drought trigger is limited because dry-day persistence is near zero and precipitation deficit is not strong.", 0.60, 24)
+            return triggered("Drought trigger is limited because dry-day persistence is near zero and precipitation deficit is not strong.", 0.60, 24, 0.24)
     elif disaster_type == "heatwave":
         max_anomaly, _night_anomaly, hot_days, _apparent = units
         if hot_days < 0.25 and max_anomaly < 0.45:

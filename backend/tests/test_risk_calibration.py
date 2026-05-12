@@ -27,6 +27,17 @@ def test_recent_rain_and_zero_dry_days_reduce_drought_chance() -> None:
     assert result["risk_level"] == "Low"
 
 
+def test_any_rain_in_last_7_days_caps_drought_at_low() -> None:
+    result = calculate_risk(
+        "drought",
+        {"precipitation_deficit": 90, "soil_moisture_deficit": 90, "temperature_anomaly": 80, "dry_days": 80},
+        {"recent_precipitation_7d": {"value": 2.4, "unit": "mm / 7 days"}},
+    )
+    assert result["overall_risk_score"] <= 25
+    assert result["risk_level"] == "Low"
+    assert "last 7 days" in result["explanation"]
+
+
 def test_one_hot_day_does_not_create_high_heatwave_risk() -> None:
     result = calculate_risk(
         "heatwave",
@@ -72,6 +83,7 @@ def test_earthquake_does_not_claim_exact_prediction() -> None:
 if __name__ == "__main__":
     test_no_rain_high_soil_moisture_does_not_create_high_flood_chance()
     test_recent_rain_and_zero_dry_days_reduce_drought_chance()
+    test_any_rain_in_last_7_days_caps_drought_at_low()
     test_one_hot_day_does_not_create_high_heatwave_risk()
     test_steep_terrain_without_rainfall_does_not_create_high_landslide_risk()
     test_no_snow_makes_avalanche_not_applicable()

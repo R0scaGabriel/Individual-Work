@@ -24,7 +24,6 @@ import {
   BarChart,
   CartesianGrid,
   Cell,
-  Legend,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -80,6 +79,10 @@ const DISASTER_ACCENTS = {
 };
 const GRID_RENDERER = L.canvas({ padding: 0.35 });
 const MAX_RENDERED_GRID_CELLS = 6500;
+const WORLD_MAP_BOUNDS = [
+  [-85, -180],
+  [85, 180],
+];
 
 function createMarkerIcon(level) {
   const color = LEVEL_COLORS[level] || "#64748b";
@@ -396,56 +399,30 @@ function App() {
     });
   }, [scoredRisks, selectedDisaster, selectedRiskLevel, selectedLocation]);
 
-  const distributionData = useMemo(() => {
-    const byDisaster = new Map();
-    const records = [
-      ...scoredRisks,
-      ...displayedGrid.filter((cell) => cell.applicable && cell.risk_level !== "Not Applicable"),
-    ];
-    for (const item of records) {
-      if (!["Low", "Medium", "High", "Critical"].includes(item.risk_level)) {
-        continue;
-      }
-      const key = item.disaster_type;
-      const row = byDisaster.get(key) || {
-        type: DISASTER_LABELS[key],
-        disaster_type: key,
-        Low: 0,
-        Medium: 0,
-        High: 0,
-        Critical: 0,
-      };
-      row[item.risk_level] += 1;
-      byDisaster.set(key, row);
-    }
-    return [...byDisaster.values()];
-  }, [displayedGrid, scoredRisks, selectedDisaster]);
-
   const comparisonData = useMemo(() => {
-    return scoredRisks.map((match) => {
-      return {
-        location: match.locationName,
-        risk: Number((match?.risk_score || 0).toFixed(1)),
-        level: match?.risk_level || "Low",
-      };
-    });
+    return scoredRisks
+      .map((match) => {
+        return {
+          location: match.locationName,
+          risk: Number((match?.risk_score || 0).toFixed(1)),
+          level: match?.risk_level || "Low",
+        };
+      })
+      .sort((left, right) => right.risk - left.risk || left.location.localeCompare(right.location));
   }, [scoredRisks]);
+
+  const sortedLocations = useMemo(() => {
+    return [...locations].sort((left, right) => left.name.localeCompare(right.name));
+  }, [locations]);
 
   const selectedMapRecord = selectedGridCell || selectedRisk;
   const selectedBundle = riskBundles.find((bundle) => bundle.location.id === selectedRisk?.location?.id);
   const selectedWeather = selectedBundle?.weather?.current || {};
-  const selectedDaily = selectedBundle?.weather?.daily || [];
   const selectedDataRows = selectedMapRecord?.indicator_details || [];
-  const selectedApplicability = selectedGridCell?.applicability || selectedRisk?.applicability || null;
-  const selectedProviders = selectedGridCell?.providers || selectedBundle?.providers || selectedRisk?.providers || {};
   const activeFloodRisk = allRiskItems.find((item) => item.location.id === activeMapLocation?.id && item.disaster_type === "flood");
   const riverColor = LEVEL_COLORS[activeFloodRisk?.risk_level] || "#228be6";
   const ActiveDisasterIcon = DISASTER_ICONS[selectedDisaster] || Layers3;
   const activeDisasterLabel = DISASTER_LABELS[selectedDisaster] || "Disaster";
-  const activeLayerDescription =
-    selectedDisaster === "earthquake"
-      ? "Continuous impact-risk grid from recent USGS data. This is not earthquake prediction."
-      : "One continuous grid from live country/region API records; country scores are aggregated from covering cells.";
 
   function handleGridCellClick(cell) {
     setSelectedGridCell(cell);
@@ -485,9 +462,6 @@ function App() {
               <h1 className="text-xl font-bold tracking-normal md:text-2xl">
                 Digital System for Natural Disaster Risk Estimation
               </h1>
-              <p className="text-sm text-muted">
-                Academic prototype using public environmental data, geophysical feeds, and mathematical indicators
-              </p>
             </div>
           </div>
           <button
@@ -536,7 +510,7 @@ function App() {
                 }}
               >
                 <option value="All">All countries / regions</option>
-                {locations.map((location) => (
+                {sortedLocations.map((location) => (
                   <option key={location.id} value={location.id}>
                     {location.name}
                   </option>
@@ -593,120 +567,149 @@ function App() {
 
           {error && <div className="rounded border border-red-200 bg-red-50 p-4 text-sm font-medium text-red-700">{error}</div>}
 
-          <section className="rounded border border-blue-200 bg-blue-50 p-4 text-sm leading-6 text-blue-950">
-            This academic prototype estimates risk using public data and mathematical indicators. It is not an official emergency-warning system.
-          </section>
-
           <div className="grid gap-5 xl:grid-cols-[minmax(0,1.3fr)_minmax(380px,0.7fr)]">
-            <section className="h-[560px] overflow-hidden rounded border border-slate-200 bg-panel shadow-soft">
-              <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
-                <div className="flex min-w-0 items-center gap-2">
-                  <ActiveDisasterIcon
-                    size={18}
-                    className="shrink-0"
-                    style={{ color: DISASTER_ACCENTS[selectedDisaster] || "#1967d2" }}
-                    aria-hidden="true"
-                  />
-                  <div className="min-w-0">
-                    <h2 className="truncate text-base font-bold">{activeDisasterLabel} Risk Surface</h2>
-                    <p className="truncate text-xs text-slate-500">{activeLayerDescription}</p>
+            <div className="space-y-5">
+              <section className="h-[560px] overflow-hidden rounded border border-slate-200 bg-panel shadow-soft">
+                <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
+                  <div className="flex min-w-0 items-center gap-2">
+                    <ActiveDisasterIcon
+                      size={18}
+                      className="shrink-0"
+                      style={{ color: DISASTER_ACCENTS[selectedDisaster] || "#1967d2" }}
+                      aria-hidden="true"
+                    />
+                    <div className="min-w-0">
+                      <h2 className="truncate text-base font-bold">{activeDisasterLabel} Risk Surface</h2>
+                    </div>
                   </div>
                 </div>
-                <span className="text-xs font-semibold text-slate-500">
-                  {mapLoading ? "Loading layers" : `${renderedGrid.length}/${displayedGrid.length} rendered grid cells`}
-                </span>
-              </div>
-              <div className="relative h-[512px]">
-                <MapContainer center={[45, 20]} zoom={3} scrollWheelZoom preferCanvas>
-                  <TileLayer
-                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                  />
-                  <FitBounds markers={mapMarkers} activeLocation={selectedLocation === "All" ? null : activeMapLocation} />
-                  <MapViewportTracker onChange={handleMapViewportChange} />
-
-                  {rivers?.features?.length > 0 && (
-                    <GeoJSON
-                      key={`${activeMapLocation?.id}-rivers-${riverColor}`}
-                      data={rivers}
-                      style={() => ({ color: riverColor, weight: 4, opacity: 0.72 })}
-                      onEachFeature={(feature, layer) => {
-                        layer.bindPopup(`${feature.properties?.name || "Waterway"} (${feature.properties?.waterway || "river"})`);
-                      }}
+                <div className="relative h-[512px]">
+                  <MapContainer
+                    center={[45, 20]}
+                    zoom={3}
+                    minZoom={2}
+                    maxBounds={WORLD_MAP_BOUNDS}
+                    maxBoundsViscosity={1}
+                    scrollWheelZoom
+                    preferCanvas
+                    worldCopyJump={false}
+                  >
+                    <TileLayer
+                      attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                      url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                      noWrap
                     />
-                  )}
+                    <FitBounds markers={mapMarkers} activeLocation={selectedLocation === "All" ? null : activeMapLocation} />
+                    <MapViewportTracker onChange={handleMapViewportChange} />
 
-                  {renderedGrid.map((cell) => (
-                    <Rectangle
-                      key={cell.id}
-                      bounds={cell.bounds}
-                      renderer={GRID_RENDERER}
-                      pathOptions={gridCellStyle(cell)}
-                      eventHandlers={{
-                        click: () => handleGridCellClick(cell),
-                      }}
-                    >
-                      <Popup>
-                        <GridCellPopup cell={cell} />
-                      </Popup>
-                    </Rectangle>
-                  ))}
+                    {rivers?.features?.length > 0 && (
+                      <GeoJSON
+                        key={`${activeMapLocation?.id}-rivers-${riverColor}`}
+                        data={rivers}
+                        style={() => ({ color: riverColor, weight: 4, opacity: 0.72 })}
+                        onEachFeature={(feature, layer) => {
+                          layer.bindPopup(`${feature.properties?.name || "Waterway"} (${feature.properties?.waterway || "river"})`);
+                        }}
+                      />
+                    )}
 
-                  {selectedDisaster === "earthquake" &&
-                    earthquakeMap.events?.map((event) => (
-                      <CircleMarker
-                        key={event.id}
-                        center={[event.lat, event.lon]}
-                        radius={event.display_radius}
-                        pathOptions={{
-                          color: "#7048e8",
-                          fillColor: "#7048e8",
-                          fillOpacity: 0.22 + event.intensity * 0.38,
-                          opacity: 0.75,
+                    {renderedGrid.map((cell) => (
+                      <Rectangle
+                        key={cell.id}
+                        bounds={cell.bounds}
+                        renderer={GRID_RENDERER}
+                        pathOptions={gridCellStyle(cell)}
+                        eventHandlers={{
+                          click: () => handleGridCellClick(cell),
                         }}
                       >
                         <Popup>
-                          <div className="space-y-2">
-                            <p className="text-sm font-bold">{event.place}</p>
-                            <p className="text-xs text-slate-600">Magnitude {event.magnitude} - depth {event.depth} km</p>
-                            <p className="text-xs text-slate-600">Distance to selected location: {event.distance_km} km</p>
-                          </div>
+                          <GridCellPopup cell={cell} />
                         </Popup>
-                      </CircleMarker>
+                      </Rectangle>
                     ))}
 
-                  {mapMarkers.map((item) => (
-                    <Marker
-                      key={`${item.location.id}-${item.disaster_type}`}
-                      position={[item.lat, item.lon]}
-                      icon={createMarkerIcon(item.risk_level)}
-                      eventHandlers={{ click: () => { setSelectedRisk(item); setSelectedGridCell(null); } }}
-                    >
-                      <Popup>
-                        <div className="space-y-2">
-                          <p className="text-sm font-bold">{item.locationName}</p>
-                          <p className="text-xs text-slate-500">
-                            {item.label} - {item.region}
-                          </p>
-                          <div className="flex items-center justify-between gap-3">
-                            <span className="text-xs font-semibold text-slate-500">Risk score</span>
-                            <span className="text-sm font-bold">{item.risk_score.toFixed(1)}</span>
+                    {selectedDisaster === "earthquake" &&
+                      earthquakeMap.events?.map((event) => (
+                        <CircleMarker
+                          key={event.id}
+                          center={[event.lat, event.lon]}
+                          radius={event.display_radius}
+                          pathOptions={{
+                            color: "#7048e8",
+                            fillColor: "#7048e8",
+                            fillOpacity: 0.22 + event.intensity * 0.38,
+                            opacity: 0.75,
+                          }}
+                        >
+                          <Popup>
+                            <div className="space-y-2">
+                              <p className="text-sm font-bold">{event.place}</p>
+                              <p className="text-xs text-slate-600">Magnitude {event.magnitude} - depth {event.depth} km</p>
+                              <p className="text-xs text-slate-600">Distance to selected location: {event.distance_km} km</p>
+                            </div>
+                          </Popup>
+                        </CircleMarker>
+                      ))}
+
+                    {mapMarkers.map((item) => (
+                      <Marker
+                        key={`${item.location.id}-${item.disaster_type}`}
+                        position={[item.lat, item.lon]}
+                        icon={createMarkerIcon(item.risk_level)}
+                        eventHandlers={{ click: () => { setSelectedRisk(item); setSelectedGridCell(null); } }}
+                      >
+                        <Popup>
+                          <div className="space-y-2">
+                            <p className="text-sm font-bold">{item.locationName}</p>
+                            <p className="text-xs text-slate-500">
+                              {item.label} - {item.region}
+                            </p>
+                            <div className="flex items-center justify-between gap-3">
+                              <span className="text-xs font-semibold text-slate-500">Risk score</span>
+                              <span className="text-sm font-bold">{item.risk_score.toFixed(1)}</span>
+                            </div>
+                            <RiskBadge level={item.risk_level} />
+                            <p className="text-xs leading-5 text-slate-600">{item.explanation}</p>
                           </div>
-                          <RiskBadge level={item.risk_level} />
-                          <p className="text-xs leading-5 text-slate-600">{item.explanation}</p>
-                        </div>
-                      </Popup>
-                    </Marker>
-                  ))}
-                </MapContainer>
-                <RiskLegend />
-                {!mapLoading && selectedLocation !== "All" && riskGrid.length > 0 && riskGrid.every((cell) => !cell.applicable) && (
-                  <div className="absolute bottom-3 left-3 z-[500] max-w-[300px] rounded border border-slate-200 bg-white/95 px-3 py-2 text-xs font-semibold text-slate-600 shadow-soft">
-                    Detailed cells are muted because this hazard is not physically applicable in most of the selected area.
-                  </div>
-                )}
-              </div>
-            </section>
+                        </Popup>
+                      </Marker>
+                    ))}
+                  </MapContainer>
+                  <RiskLegend />
+                  {!mapLoading && selectedLocation !== "All" && riskGrid.length > 0 && riskGrid.every((cell) => !cell.applicable) && (
+                    <div className="absolute bottom-3 left-3 z-[500] max-w-[300px] rounded border border-slate-200 bg-white/95 px-3 py-2 text-xs font-semibold text-slate-600 shadow-soft">
+                      Detailed cells are muted because this hazard is not physically applicable in most of the selected area.
+                    </div>
+                  )}
+                </div>
+              </section>
+
+              <section className="rounded border border-slate-200 bg-panel p-4 shadow-soft">
+                <div className="mb-2 flex items-center gap-2">
+                  <BarChart3 size={18} className="text-[#1967d2]" aria-hidden="true" />
+                  <h2 className="text-base font-bold">Risk Score Comparison Between Locations</h2>
+                </div>
+                <p className="mb-4 text-sm leading-6 text-slate-600">
+                  This chart compares the country/region score aggregated from the visible grid cells under the selected disaster filter.
+                </p>
+                <div className="h-[420px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={comparisonData} margin={{ top: 10, right: 16, left: -20, bottom: 86 }}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                      <XAxis dataKey="location" angle={-32} textAnchor="end" interval={0} height={112} tick={{ fontSize: 12 }} />
+                      <YAxis domain={[0, 100]} />
+                      <Tooltip formatter={(value) => [`${value}`, "Risk score"]} />
+                      <Bar dataKey="risk" radius={[4, 4, 0, 0]}>
+                        {comparisonData.map((entry) => (
+                          <Cell key={entry.location} fill={LEVEL_COLORS[entry.level] || "#1967d2"} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </section>
+            </div>
 
             <section className="rounded border border-slate-200 bg-panel p-4 shadow-soft">
               <div className="mb-3 flex items-center gap-2">
@@ -737,31 +740,11 @@ function App() {
                     <Metric label="Confidence" value={selectedMapRecord.confidence || "N/A"} />
                     <Metric label="Raw hazard" value={`${formatValue((selectedMapRecord.raw_hazard ?? selectedMapRecord.hazard_index ?? 0) * 100)} / 100`} />
                     {selectedMapRecord.time_window_days && <Metric label="Time window" value={`${selectedMapRecord.time_window_days} days`} />}
-                    <Metric label="Model family" value={selectedMapRecord.model_family || "Academic risk proxy"} />
-                    {selectedGridCell && <Metric label="Cell mode" value={selectedGridCell.overview ? "Fast overview" : selectedGridCell.applicable ? "Detailed applicable" : "Muted / not applicable"} />}
                     <Metric label="Temperature" value={`${selectedWeather.temperature_2m ?? "N/A"} C`} />
                     <Metric label="Precipitation" value={`${selectedWeather.precipitation ?? "N/A"} mm`} />
                     <Metric label="Humidity" value={`${selectedWeather.relative_humidity_2m ?? "N/A"}%`} />
                     <Metric label="Wind speed" value={`${selectedWeather.wind_speed_10m ?? "N/A"} km/h`} />
                   </div>
-                  <ProviderStatusPanel providers={selectedProviders} />
-                  {selectedGridCell && (
-                    <section className="rounded border border-slate-200 bg-white p-3">
-                      <h3 className="mb-2 text-sm font-bold">Applicability conditions</h3>
-                      <p className="mb-2 text-sm leading-6 text-slate-600">{selectedGridCell.reason}</p>
-                      <div className="space-y-2">
-                        {selectedApplicability?.conditions?.map((condition) => (
-                          <div key={condition.label} className="flex items-start justify-between gap-3 text-sm">
-                            <span className="text-slate-600">{condition.label}</span>
-                            <span className={condition.passed ? "font-semibold text-green-700" : "font-semibold text-slate-500"}>
-                              {condition.value ? `${condition.value} - ` : ""}
-                              {condition.passed ? "passed" : "not met"}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    </section>
-                  )}
                   <div>
                     <h3 className="mb-2 text-sm font-bold">Indicators used in this calculation</h3>
                     <div className="overflow-auto rounded border border-slate-200">
@@ -771,7 +754,6 @@ function App() {
                             <th className="px-3 py-2">Indicator</th>
                             <th className="px-3 py-2">Value</th>
                             <th className="px-3 py-2">Index 0-100</th>
-                            <th className="px-3 py-2">Why it matters</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -782,24 +764,12 @@ function App() {
                                 {formatValue(row.value)} {row.unit}
                               </td>
                               <td className="px-3 py-2 font-bold">{Number(row.normalized_value).toFixed(1)}</td>
-                              <td className="px-3 py-2 text-slate-600">{row.explanation}</td>
                             </tr>
                           ))}
                         </tbody>
                       </table>
                     </div>
                   </div>
-                  <p className="text-sm leading-6 text-slate-600">
-                    {selectedGridCell ? selectedGridCell.reason : selectedRisk.explanation}
-                  </p>
-                  <p className="rounded border border-amber-200 bg-amber-50 p-3 text-sm leading-6 text-amber-900">
-                    {selectedGridCell
-                      ? selectedGridCell.overview
-                        ? "This overview grid reuses country/region API records for fast whole-map visualization. Select one country/region for detailed cell sampling."
-                        : "This grid layer is an academic visualization. Verify with official agencies before any real decision."
-                      : selectedRisk.recommendation}
-                  </p>
-                  <MiniWeatherTable rows={selectedDaily.slice(-5)} />
                 </div>
               ) : (
                 <p className="text-sm text-muted">Select a marker or alert to inspect indicators.</p>
@@ -807,56 +777,6 @@ function App() {
             </section>
           </div>
 
-          <div className="grid gap-5 xl:grid-cols-2">
-            <section className="rounded border border-slate-200 bg-panel p-4 shadow-soft">
-              <div className="mb-2 flex items-center gap-2">
-                <BarChart3 size={18} className="text-[#1967d2]" aria-hidden="true" />
-                <h2 className="text-base font-bold">Risk Distribution by Disaster Type</h2>
-              </div>
-              <p className="mb-4 text-sm leading-6 text-slate-600">
-                This chart groups calculated grid cells or monitored records by disaster type and risk level.
-              </p>
-              <div className="h-[320px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={distributionData} margin={{ top: 10, right: 10, left: -20, bottom: 42 }}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                    <XAxis dataKey="type" angle={-25} textAnchor="end" interval={0} height={74} tick={{ fontSize: 12 }} />
-                    <YAxis allowDecimals={false} />
-                    <Tooltip />
-                    <Legend />
-                    {["Low", "Medium", "High", "Critical"].map((level) => (
-                      <Bar key={level} dataKey={level} stackId="risk" fill={LEVEL_COLORS[level]} />
-                    ))}
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </section>
-
-            <section className="rounded border border-slate-200 bg-panel p-4 shadow-soft">
-              <div className="mb-2 flex items-center gap-2">
-                <BarChart3 size={18} className="text-[#1967d2]" aria-hidden="true" />
-                <h2 className="text-base font-bold">Risk Score Comparison Between Locations</h2>
-              </div>
-              <p className="mb-4 text-sm leading-6 text-slate-600">
-                This chart compares the country/region score aggregated from the visible grid cells under the selected disaster filter.
-              </p>
-              <div className="h-[320px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={comparisonData} margin={{ top: 10, right: 10, left: -20, bottom: 40 }}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                    <XAxis dataKey="location" angle={-28} textAnchor="end" interval={0} height={70} tick={{ fontSize: 12 }} />
-                    <YAxis domain={[0, 100]} />
-                    <Tooltip formatter={(value) => [`${value}`, "Risk score"]} />
-                    <Bar dataKey="risk" radius={[4, 4, 0, 0]}>
-                      {comparisonData.map((entry) => (
-                        <Cell key={entry.location} fill={LEVEL_COLORS[entry.level] || "#1967d2"} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </section>
-          </div>
         </section>
       </main>
 
@@ -1249,41 +1169,6 @@ function Metric({ label, value }) {
   );
 }
 
-function ProviderStatusPanel({ providers }) {
-  const entries = Object.entries(providers || {});
-  if (!entries.length) {
-    return null;
-  }
-
-  return (
-    <section className="rounded border border-slate-200 bg-white p-3">
-      <h3 className="mb-2 text-sm font-bold">External data providers</h3>
-      <div className="grid gap-2 sm:grid-cols-2">
-        {entries.map(([key, provider]) => (
-          <div key={key} className="rounded border border-slate-100 bg-slate-50 p-2">
-            <div className="flex items-start justify-between gap-2">
-              <p className="text-xs font-semibold uppercase text-slate-500">{formatProviderName(key)}</p>
-              <span
-                className={`rounded px-2 py-0.5 text-[11px] font-bold ${
-                  provider?.status === "unavailable"
-                    ? "bg-red-100 text-red-700"
-                    : provider?.status === "not_configured"
-                      ? "bg-amber-100 text-amber-800"
-                      : "bg-green-100 text-green-700"
-                }`}
-              >
-                {providerStatusBadge(provider)}
-              </span>
-            </div>
-            <p className="mt-1 break-words text-sm font-bold">{formatProviderStatus(provider)}</p>
-            {provider?.reason && <p className="mt-1 text-xs leading-5 text-slate-500">{provider.reason}</p>}
-          </div>
-        ))}
-      </div>
-    </section>
-  );
-}
-
 function GridCellPopup({ cell }) {
   const indicators = (cell.indicator_details || []).slice(0, 5);
   return (
@@ -1315,41 +1200,6 @@ function GridCellPopup({ cell }) {
           ))
         )}
       </div>
-      <p className="border-t border-slate-100 pt-2 text-xs leading-5 text-slate-600">{cell.reason}</p>
-    </div>
-  );
-}
-
-function MiniWeatherTable({ rows }) {
-  if (!rows.length) {
-    return null;
-  }
-
-  return (
-    <div>
-      <h3 className="mb-2 text-sm font-bold">Recent weather samples</h3>
-      <div className="overflow-auto rounded border border-slate-200">
-        <table className="w-full min-w-[420px] text-left text-xs">
-          <thead className="bg-slate-50 text-slate-500">
-            <tr>
-              <th className="px-3 py-2">Date</th>
-              <th className="px-3 py-2">Temp</th>
-              <th className="px-3 py-2">Precip.</th>
-              <th className="px-3 py-2">Wind</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row) => (
-              <tr key={row.date} className="border-t border-slate-100">
-                <td className="px-3 py-2">{row.date}</td>
-                <td className="px-3 py-2">{row.temperature} C</td>
-                <td className="px-3 py-2">{row.precipitation} mm</td>
-                <td className="px-3 py-2">{row.wind_speed} km/h</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
     </div>
   );
 }
@@ -1359,33 +1209,6 @@ function formatValue(value) {
     return Number(value).toFixed(Number.isInteger(value) ? 0 : 1);
   }
   return value ?? "N/A";
-}
-
-function formatProviderName(key) {
-  return key.replaceAll("_", " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
-}
-
-function formatProviderStatus(provider = {}) {
-  if (provider.source && provider.status !== "unavailable") {
-    return provider.source;
-  }
-  if (provider.status === "configured") {
-    return "Configured";
-  }
-  if (provider.status === "unavailable") {
-    return "Unavailable";
-  }
-  return provider.source || provider.status || "Not configured";
-}
-
-function providerStatusBadge(provider = {}) {
-  if (provider.status === "unavailable") {
-    return "Error";
-  }
-  if (provider.status === "not_configured") {
-    return "Setup";
-  }
-  return "On";
 }
 
 export default App;
