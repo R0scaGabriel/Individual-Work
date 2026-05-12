@@ -131,6 +131,13 @@ function createUnavailableBundle(location, disasterData) {
     weather: { source: "unavailable", current: {}, daily: [] },
     flood: { source: "unavailable" },
     terrain: { source: "unavailable" },
+    providers: {
+      open_meteo: {
+        source: "open-meteo",
+        status: "unavailable",
+        reason: "Weather, flood, and terrain requests were unavailable for this refresh.",
+      },
+    },
     nearest_earthquake: null,
     results: disasterData.map((disaster) => ({
       disaster_type: disaster.id,
@@ -199,6 +206,7 @@ function App() {
           country: bundle.location.country,
           region: bundle.location.region,
           weatherSource: bundle.weather?.source,
+          providers: bundle.providers || {},
         })),
       ),
     [riskBundles],
@@ -384,6 +392,7 @@ function App() {
   const selectedDaily = selectedBundle?.weather?.daily || [];
   const selectedDataRows = selectedMapRecord?.indicator_details || [];
   const selectedApplicability = selectedGridCell?.applicability || selectedRisk?.applicability || null;
+  const selectedProviders = selectedGridCell?.providers || selectedBundle?.providers || selectedRisk?.providers || {};
   const activeFloodRisk = allRiskItems.find((item) => item.location.id === activeMapLocation?.id && item.disaster_type === "flood");
   const riverColor = LEVEL_COLORS[activeFloodRisk?.risk_level] || "#228be6";
   const ActiveDisasterIcon = DISASTER_ICONS[selectedDisaster] || Layers3;
@@ -668,6 +677,7 @@ function App() {
                     <Metric label="Humidity" value={`${selectedWeather.relative_humidity_2m ?? "N/A"}%`} />
                     <Metric label="Wind speed" value={`${selectedWeather.wind_speed_10m ?? "N/A"} km/h`} />
                   </div>
+                  <ProviderStatusPanel providers={selectedProviders} />
                   {selectedGridCell && (
                     <section className="rounded border border-slate-200 bg-white p-3">
                       <h3 className="mb-2 text-sm font-bold">Applicability conditions</h3>
@@ -926,6 +936,7 @@ function buildOverviewGrid(records, targetCellDegrees = 0.42) {
         normalized_indicators: record.indicators || {},
         indicator_details: record.indicator_details || [],
         model_family: record.model_family,
+        providers: record.providers || {},
         applicability: {
           applicable: !unavailable,
           reason: "This cell belongs to a continuous overview grid. Country scores are aggregated from land-masked grid cells whose centers fall inside that country/region.",
@@ -1104,6 +1115,37 @@ function Metric({ label, value }) {
   );
 }
 
+function ProviderStatusPanel({ providers }) {
+  const entries = Object.entries(providers || {});
+  if (!entries.length) {
+    return null;
+  }
+
+  return (
+    <section className="rounded border border-slate-200 bg-white p-3">
+      <h3 className="mb-2 text-sm font-bold">External data providers</h3>
+      <div className="grid gap-2 sm:grid-cols-2">
+        {entries.map(([key, provider]) => (
+          <div key={key} className="rounded border border-slate-100 bg-slate-50 p-2">
+            <div className="flex items-start justify-between gap-2">
+              <p className="text-xs font-semibold uppercase text-slate-500">{formatProviderName(key)}</p>
+              <span
+                className={`rounded px-2 py-0.5 text-[11px] font-bold ${
+                  provider?.status === "unavailable" ? "bg-slate-200 text-slate-600" : "bg-green-100 text-green-700"
+                }`}
+              >
+                {provider?.status === "unavailable" ? "Off" : "On"}
+              </span>
+            </div>
+            <p className="mt-1 break-words text-sm font-bold">{formatProviderStatus(provider)}</p>
+            {provider?.reason && <p className="mt-1 text-xs leading-5 text-slate-500">{provider.reason}</p>}
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 function GridCellPopup({ cell }) {
   const indicators = Object.entries(cell.indicators || {}).slice(0, 4);
   return (
@@ -1164,6 +1206,23 @@ function formatValue(value) {
     return Number(value).toFixed(Number.isInteger(value) ? 0 : 1);
   }
   return value ?? "N/A";
+}
+
+function formatProviderName(key) {
+  return key.replaceAll("_", " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function formatProviderStatus(provider = {}) {
+  if (provider.source && provider.status !== "unavailable") {
+    return provider.source;
+  }
+  if (provider.status === "configured") {
+    return "Configured";
+  }
+  if (provider.status === "unavailable") {
+    return "Unavailable";
+  }
+  return provider.source || provider.status || "Not configured";
 }
 
 export default App;
