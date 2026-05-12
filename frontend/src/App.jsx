@@ -84,6 +84,62 @@ const WORLD_MAP_BOUNDS = [
   [85, 180],
 ];
 
+const DEMO_LOCATIONS = [
+  { id: "md-moldova", name: "Moldova", country: "Moldova", region: "Eastern Europe", lat: 47.2038, lon: 28.4684, bounds: [[45.45, 26.62], [48.49, 30.14]] },
+  { id: "ro-romania", name: "Romania", country: "Romania", region: "Eastern Europe", lat: 45.9432, lon: 24.9668, bounds: [[43.62, 20.26], [48.27, 29.70]] },
+  { id: "it-italy", name: "Italy", country: "Italy", region: "Southern Europe", lat: 42.5, lon: 12.5, bounds: [[36.65, 6.62], [47.1, 18.52]] },
+  { id: "jp-japan", name: "Japan", country: "Japan", region: "East Asia", lat: 37.5, lon: 138.25, bounds: [[30.2, 129.0], [45.6, 146.2]] },
+  { id: "np-nepal", name: "Nepal", country: "Nepal", region: "South Asia", lat: 28.3949, lon: 84.124, bounds: [[26.35, 80.05], [30.45, 88.2]] },
+  { id: "at-austria", name: "Austria", country: "Austria", region: "Central Europe", lat: 47.5162, lon: 14.5501, bounds: [[46.37, 9.53], [49.02, 17.16]] },
+  { id: "gr-greece", name: "Greece", country: "Greece", region: "Southern Europe", lat: 39.0742, lon: 21.8243, bounds: [[34.8, 19.37], [41.75, 29.65]] },
+  { id: "tr-turkey", name: "Turkey", country: "Turkey", region: "Western Asia / Southeastern Europe", lat: 38.9637, lon: 35.2433, bounds: [[35.81, 25.66], [42.11, 44.82]] },
+  { id: "es-spain", name: "Spain", country: "Spain", region: "Western Europe", lat: 40.4637, lon: -3.7492, bounds: [[36.0, -9.5], [43.8, 3.35]] },
+  { id: "fr-france", name: "France", country: "France", region: "Western Europe", lat: 46.2276, lon: 2.2137, bounds: [[41.3, -5.2], [51.1, 9.56]] },
+  { id: "de-germany", name: "Germany", country: "Germany", region: "Central Europe", lat: 51.1657, lon: 10.4515, bounds: [[47.27, 5.87], [55.06, 15.04]] },
+  { id: "pt-portugal", name: "Portugal", country: "Portugal", region: "Western Europe", lat: 39.3999, lon: -8.2245, bounds: [[36.95, -9.5], [42.16, -6.19]] },
+  { id: "gb-united-kingdom", name: "United Kingdom", country: "United Kingdom", region: "Western Europe", lat: 55.3781, lon: -3.436, bounds: [[49.85, -8.65], [60.86, 1.77]] },
+  { id: "ie-ireland", name: "Ireland", country: "Ireland", region: "Western Europe", lat: 53.4129, lon: -8.2439, bounds: [[51.39, -10.67], [55.43, -5.99]] },
+  { id: "nl-netherlands", name: "Netherlands", country: "Netherlands", region: "Western Europe", lat: 52.1326, lon: 5.2913, bounds: [[50.75, 3.36], [53.56, 7.22]] },
+  { id: "be-belgium", name: "Belgium", country: "Belgium", region: "Western Europe", lat: 50.5039, lon: 4.4699, bounds: [[49.5, 2.54], [51.51, 6.41]] },
+  { id: "ch-switzerland", name: "Switzerland", country: "Switzerland", region: "Central Europe", lat: 46.8182, lon: 8.2275, bounds: [[45.82, 5.96], [47.81, 10.49]] },
+  { id: "cz-czechia", name: "Czechia", country: "Czechia", region: "Central Europe", lat: 49.8175, lon: 15.473, bounds: [[48.55, 12.09], [51.06, 18.86]] },
+  { id: "hu-hungary", name: "Hungary", country: "Hungary", region: "Central Europe", lat: 47.1625, lon: 19.5033, bounds: [[45.74, 16.11], [48.59, 22.9]] },
+  { id: "bg-bulgaria", name: "Bulgaria", country: "Bulgaria", region: "Southeastern Europe", lat: 42.7339, lon: 25.4858, bounds: [[41.24, 22.36], [44.22, 28.61]] },
+  { id: "hr-croatia", name: "Croatia", country: "Croatia", region: "Southeastern Europe", lat: 45.1, lon: 15.2, bounds: [[42.39, 13.49], [46.56, 19.43]] },
+  { id: "se-sweden", name: "Sweden", country: "Sweden", region: "Northern Europe", lat: 60.1282, lon: 18.6435, bounds: [[55.34, 11.11], [69.06, 24.17]] },
+  { id: "no-norway", name: "Norway", country: "Norway", region: "Northern Europe", lat: 60.472, lon: 8.4689, bounds: [[57.96, 4.65], [71.18, 31.08]] },
+  { id: "pl-poland", name: "Poland", country: "Poland", region: "Central Europe", lat: 51.9194, lon: 19.1451, bounds: [[49.0, 14.12], [54.84, 24.15]] },
+  { id: "ua-ukraine", name: "Ukraine", country: "Ukraine", region: "Eastern Europe", lat: 48.3794, lon: 31.1656, bounds: [[44.38, 22.14], [52.38, 40.23]] },
+  { id: "ca-canada", name: "Canada", country: "Canada", region: "North America", lat: 56.1304, lon: -106.3468, bounds: [[41.68, -141.0], [83.11, -52.62]] },
+  { id: "us-united-states", name: "United States", country: "United States", region: "North America", lat: 39.8283, lon: -98.5795, bounds: [[24.52, -125.0], [49.38, -66.95]] },
+  { id: "mx-mexico", name: "Mexico", country: "Mexico", region: "North America", lat: 23.6345, lon: -102.5528, bounds: [[14.54, -118.45], [32.72, -86.7]] },
+  { id: "br-brazil", name: "Brazil", country: "Brazil", region: "South America", lat: -14.235, lon: -51.9253, bounds: [[-33.75, -73.99], [5.27, -34.79]] },
+  { id: "ar-argentina", name: "Argentina", country: "Argentina", region: "South America", lat: -38.4161, lon: -63.6167, bounds: [[-55.05, -73.58], [-21.78, -53.64]] },
+  { id: "cl-chile", name: "Chile", country: "Chile", region: "South America", lat: -35.6751, lon: -71.543, bounds: [[-55.98, -75.64], [-17.5, -66.42]] },
+  { id: "co-colombia", name: "Colombia", country: "Colombia", region: "South America", lat: 4.5709, lon: -74.2973, bounds: [[-4.23, -79.0], [13.39, -66.85]] },
+  { id: "pe-peru", name: "Peru", country: "Peru", region: "South America", lat: -9.19, lon: -75.0152, bounds: [[-18.35, -81.33], [-0.04, -68.65]] },
+];
+
+const DEMO_SCORE_SETS = {
+  flood: [82, 55, 42, 66, 74, 48, 31, 58, 24, 40, 68, 33, 76, 46, 88, 62, 52, 29, 70, 37, 44, 54, 72, 57, 49, 64, 36, 28, 80, 35, 60, 86, 69],
+  earthquake: [12, 28, 44, 86, 74, 22, 58, 82, 32, 25, 18, 20, 16, 14, 10, 12, 26, 18, 24, 36, 52, 16, 30, 20, 48, 42, 68, 78, 38, 56, 88, 72, 64],
+  wildfire: [30, 36, 62, 24, 18, 22, 88, 70, 82, 46, 34, 76, 28, 32, 40, 44, 18, 38, 66, 72, 74, 58, 26, 48, 54, 84, 80, 68, 90, 52, 60, 50, 42],
+  drought: [18, 24, 54, 14, 28, 20, 70, 74, 88, 52, 42, 82, 32, 30, 46, 40, 22, 36, 78, 66, 58, 34, 26, 44, 60, 48, 72, 76, 84, 68, 50, 62, 56],
+  heatwave: [42, 48, 68, 54, 36, 34, 82, 76, 86, 62, 58, 78, 46, 40, 52, 50, 30, 44, 74, 72, 66, 38, 28, 56, 64, 32, 80, 88, 90, 70, 60, 84, 68],
+  landslide: [36, 62, 70, 78, 92, 58, 46, 64, 34, 42, 30, 38, 44, 32, 20, 26, 82, 40, 28, 56, 60, 24, 86, 48, 54, 50, 74, 72, 52, 66, 88, 84, 80],
+  avalanche: [4, 18, 42, 52, 82, 90, 14, 38, 10, 36, 22, 8, 12, 6, 4, 8, 88, 24, 6, 18, 20, 46, 92, 16, 14, 58, 64, 4, 0, 34, 76, 12, 48],
+};
+
+const DEMO_EVENT_WINDOWS = {
+  flood: 7,
+  earthquake: 7,
+  wildfire: 7,
+  drought: 30,
+  heatwave: 7,
+  landslide: 3,
+  avalanche: 2,
+};
+
 function createMarkerIcon(level) {
   const color = LEVEL_COLORS[level] || "#64748b";
   return L.divIcon({
@@ -194,6 +250,139 @@ function createUnavailableBundle(location, disasterData) {
   };
 }
 
+function createDemoDashboardData() {
+  const disasters = GRID_DISASTERS.map((id) => ({ id, label: DISASTER_LABELS[id] }));
+  const bundles = DEMO_LOCATIONS.map((location, locationIndex) => {
+    const weather = demoWeatherForLocation(location, locationIndex);
+    return {
+      location,
+      weather,
+      flood: { source: "test-data" },
+      terrain: { source: "test-data" },
+      providers: {},
+      nearest_earthquake: null,
+      results: disasters.map((disaster) => createDemoRiskResult(location, disaster, weather, locationIndex)),
+    };
+  });
+  return { locations: DEMO_LOCATIONS, disasters, bundles };
+}
+
+function createDemoRiskResult(location, disaster, weather, locationIndex) {
+  const score = demoScoreFor(disaster.id, locationIndex);
+  const level = riskLevelFromScore(score);
+  const severity = Number(clamp(score + 18, 8, 96).toFixed(1));
+  const chance = Number(clamp(score * 0.72 + (score >= 75 ? 18 : score >= 50 ? 10 : 4), 1, 92).toFixed(1));
+  const hazard = Number(clamp(score + 12, 4, 98).toFixed(1));
+  const indicators = demoIndicators(disaster.id, hazard);
+
+  return {
+    disaster: disaster.id,
+    disaster_type: disaster.id,
+    label: disaster.label,
+    applicable: true,
+    chance_percent: chance,
+    time_window_days: DEMO_EVENT_WINDOWS[disaster.id],
+    event_definition: `Test data scenario for ${disaster.label.toLowerCase()} risk demonstration.`,
+    severity_score: severity,
+    overall_risk_score: score,
+    risk_score: score,
+    probability: Number((chance / 100).toFixed(4)),
+    risk_level: level,
+    confidence: score >= 70 ? "High" : score >= 30 ? "Moderate" : "Low",
+    raw_hazard: Number((hazard / 100).toFixed(4)),
+    hazard_index: Number((hazard / 100).toFixed(4)),
+    calculation_engine: "test_data",
+    model_family: "Built-in classroom test dataset; no public APIs are called.",
+    indicators,
+    indicator_details: demoIndicatorDetails(disaster.id, indicators),
+    explanation: `${disaster.label} test scenario for ${location.name}: ${level} overall risk with synthetic but realistic indicator values.`,
+    recommendation: "Use this only for presentation/testing. Switch back to Refresh for live public API data.",
+    location,
+    lat: location.lat,
+    lon: location.lon,
+    weatherSource: "test-data",
+  };
+}
+
+function demoScoreFor(disasterType, locationIndex) {
+  const scores = DEMO_SCORE_SETS[disasterType] || [];
+  return scores[locationIndex % scores.length] ?? 0;
+}
+
+function demoWeatherForLocation(location, index) {
+  const warm = 18 + index * 3;
+  return {
+    source: "test-data",
+    current: {
+      temperature_2m: Number(warm.toFixed(1)),
+      precipitation: index % 3 === 0 ? 18 : index % 3 === 1 ? 0 : 4,
+      relative_humidity_2m: clamp(72 - index * 6, 22, 88),
+      wind_speed_10m: clamp(10 + index * 4, 5, 42),
+      apparent_temperature: Number((warm + 3).toFixed(1)),
+    },
+    daily: [],
+  };
+}
+
+function demoIndicators(disasterType, hazard) {
+  const high = clamp(hazard, 0, 100);
+  const mid = clamp(hazard * 0.78, 0, 100);
+  const low = clamp(hazard * 0.45, 0, 100);
+  const sets = {
+    flood: { rainfall: mid, discharge_anomaly: high, soil_moisture: mid, low_elevation: low },
+    earthquake: { magnitude_index: high, shallow_depth: mid, distance_decay: mid, exposure: low },
+    wildfire: { temperature: mid, wind: high, dryness: high, precipitation_deficit: mid, active_fire_proximity: low },
+    drought: { precipitation_deficit: high, soil_moisture_deficit: mid, temperature_anomaly: mid, dry_days: high },
+    heatwave: { max_temperature_anomaly: high, night_temperature_anomaly: mid, consecutive_hot_days: mid, apparent_temperature: high },
+    landslide: { rainfall_intensity: high, antecedent_rainfall: mid, slope: high, soil_moisture: mid, low_vegetation: low },
+    avalanche: { recent_snowfall: high, snow_depth: mid, slope_criticality: high, wind_transport: mid, temperature_change: low, snowpack_instability: mid },
+  };
+  return Object.fromEntries(Object.entries(sets[disasterType] || {}).map(([key, value]) => [key, Number(value.toFixed(1))]));
+}
+
+function demoIndicatorDetails(disasterType, indicators) {
+  const units = {
+    rainfall: "mm / 7 days",
+    discharge_anomaly: "% of expected discharge",
+    soil_moisture: "test soil index",
+    low_elevation: "m susceptibility proxy",
+    magnitude_index: "Mw index",
+    shallow_depth: "km depth proxy",
+    distance_decay: "distance influence",
+    exposure: "population exposure proxy",
+    temperature: "C fire-weather proxy",
+    wind: "km/h wind proxy",
+    dryness: "fuel dryness index",
+    precipitation_deficit: "30-day deficit index",
+    active_fire_proximity: "active fire proximity",
+    soil_moisture_deficit: "soil deficit index",
+    temperature_anomaly: "C anomaly proxy",
+    dry_days: "consecutive dry days proxy",
+    max_temperature_anomaly: "C above baseline",
+    night_temperature_anomaly: "C warm-night proxy",
+    consecutive_hot_days: "days",
+    apparent_temperature: "C apparent heat proxy",
+    rainfall_intensity: "mm/day",
+    antecedent_rainfall: "mm / 7 days",
+    slope: "degrees proxy",
+    low_vegetation: "vegetation-loss index",
+    recent_snowfall: "cm",
+    snow_depth: "cm",
+    slope_criticality: "slope criticality",
+    wind_transport: "km/h wind transport",
+    temperature_change: "C",
+    snowpack_instability: "instability index",
+  };
+  return Object.entries(indicators).map(([key, value]) => ({
+    key,
+    label: key.replaceAll("_", " ").replace(/\b\w/g, (letter) => letter.toUpperCase()),
+    value: Number(value.toFixed(1)),
+    unit: units[key] || "test index",
+    normalized_value: Number(value.toFixed(1)),
+    explanation: `Synthetic ${DISASTER_LABELS[disasterType].toLowerCase()} test indicator.`,
+  }));
+}
+
 function App() {
   const [locations, setLocations] = useState([]);
   const [disasters, setDisasters] = useState([]);
@@ -210,10 +399,12 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [mapLoading, setMapLoading] = useState(false);
   const [error, setError] = useState("");
+  const [demoMode, setDemoMode] = useState(false);
 
   async function loadDashboard() {
     setLoading(true);
     setError("");
+    setDemoMode(false);
     try {
       const [locationData, disasterData, overviewBundles] = await Promise.all([
         getLocations(),
@@ -228,12 +419,36 @@ function App() {
       setRiskBundles(bundles);
       const records = bundles.flatMap((bundle) => bundle.results);
       setSelectedRisk(records.find((record) => record.disaster_type === selectedDisaster) || records[0] || null);
+      setSelectedGridCell(null);
+      setRivers(null);
+      setRiskGrid([]);
+      setEarthquakeMap({ events: [], heatmap_points: [] });
     } catch (requestError) {
       setError("Backend is not reachable. Start FastAPI on http://localhost:8000 and reload the dashboard.");
       console.error(requestError);
     } finally {
       setLoading(false);
     }
+  }
+
+  function loadDemoDashboard() {
+    const demo = createDemoDashboardData();
+    const records = demo.bundles.flatMap((bundle) => bundle.results);
+    setDemoMode(true);
+    setLoading(false);
+    setMapLoading(false);
+    setError("");
+    setLocations(demo.locations);
+    setDisasters(demo.disasters);
+    setRiskBundles(demo.bundles);
+    setSelectedDisaster("flood");
+    setSelectedRiskLevel("All");
+    setSelectedLocation("All");
+    setSelectedRisk(records.find((record) => record.disaster_type === "flood") || records[0] || null);
+    setSelectedGridCell(null);
+    setRivers(null);
+    setRiskGrid([]);
+    setEarthquakeMap({ events: [], heatmap_points: [] });
   }
 
   useEffect(() => {
@@ -289,6 +504,13 @@ function App() {
     if (!activeMapLocation) {
       return;
     }
+    if (demoMode) {
+      setRivers(null);
+      setEarthquakeMap({ events: [], heatmap_points: [] });
+      setRiskGrid([]);
+      setMapLoading(false);
+      return;
+    }
     if (selectedLocation === "All") {
       setRivers(null);
       setEarthquakeMap({ events: [], heatmap_points: [] });
@@ -332,7 +554,7 @@ function App() {
     return () => {
       cancelled = true;
     };
-  }, [activeMapLocation, selectedDisaster, activeGridDisaster, selectedLocation]);
+  }, [activeMapLocation, selectedDisaster, activeGridDisaster, selectedLocation, demoMode]);
 
   const filteredRisks = useMemo(() => {
     return allRiskItems.filter((item) => {
@@ -464,15 +686,31 @@ function App() {
               </h1>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={loadDashboard}
-            className="inline-flex h-10 items-center justify-center gap-2 rounded border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-            title="Refresh dashboard data"
-          >
-            <RefreshCcw size={16} aria-hidden="true" />
-            Refresh
-          </button>
+          <div className="flex flex-wrap items-center gap-2">
+            {demoMode && (
+              <span className="rounded border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-bold text-amber-800">
+                Test data active
+              </span>
+            )}
+            <button
+              type="button"
+              onClick={loadDemoDashboard}
+              className="inline-flex h-10 items-center justify-center gap-2 rounded border border-amber-300 bg-amber-50 px-4 text-sm font-semibold text-amber-900 hover:bg-amber-100"
+              title="Load built-in test data without API calls"
+            >
+              <Database size={16} aria-hidden="true" />
+              Test Data
+            </button>
+            <button
+              type="button"
+              onClick={loadDashboard}
+              className="inline-flex h-10 items-center justify-center gap-2 rounded border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+              title="Refresh dashboard data"
+            >
+              <RefreshCcw size={16} aria-hidden="true" />
+              Refresh
+            </button>
+          </div>
         </div>
       </header>
 
@@ -901,6 +1139,7 @@ function buildOverviewGrid(records, targetCellDegrees = 0.42) {
       const level = unavailable ? "Not Applicable" : riskLevelFromScore(score);
       const locationName = record.locationName || record.location.name;
       const chancePercent = unavailable ? 0 : Number(record.chance_percent ?? (record.probability || 0) * 100 ?? 0);
+      const isTestData = record.weatherSource === "test-data" || record.calculation_engine === "test_data";
       cells.push({
         id: `overview-${record.location.id}-${record.disaster_type}-${row}-${col}`,
         lat: Number(lat.toFixed(5)),
@@ -926,7 +1165,9 @@ function buildOverviewGrid(records, targetCellDegrees = 0.42) {
         locationName,
         reason: unavailable
           ? "No live API-backed risk score is available for this overview cell."
-          : `${DISASTER_LABELS[record.disaster_type]} cell score is derived from ${locationName}'s live country/region record, a shore-aware land mask, and a small spatial variation factor.`,
+          : isTestData
+            ? `${DISASTER_LABELS[record.disaster_type]} cell score is derived from the built-in test dataset for ${locationName}. No public API request is used.`
+            : `${DISASTER_LABELS[record.disaster_type]} cell score is derived from ${locationName}'s live country/region record, a shore-aware land mask, and a small spatial variation factor.`,
         indicators: record.indicators || {},
         normalized_indicators: record.indicators || {},
         indicator_details: record.indicator_details || [],
@@ -944,7 +1185,7 @@ function buildOverviewGrid(records, targetCellDegrees = 0.42) {
             {
               label: "Live country/region API-backed risk record loaded",
               passed: !unavailable,
-              value: record.weatherSource || "public API record",
+              value: isTestData ? "built-in test data" : record.weatherSource || "public API record",
             },
           ],
         },
