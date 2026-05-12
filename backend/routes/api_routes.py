@@ -223,7 +223,21 @@ def _risk_bundle_for_location(
         if strict_real and weather_data.get("source") == "unavailable" and disaster_id != "earthquake":
             risk = _unavailable_risk(disaster_id, "Real Open-Meteo weather data is unavailable, so no demo risk is displayed.")
         else:
-            risk = calculate_risk(disaster_id, indicators_by_type[disaster_id])
+            risk_context = {
+                "applicable": True,
+                "weather_source": weather_data.get("source", "unknown"),
+                "flood_source": flood_data.get("source", "unknown"),
+                "terrain": terrain_data,
+                "providers": external_context,
+                "strict_real": strict_real,
+                "closest_earthquake": closest_quake if disaster_id == "earthquake" else None,
+            }
+            risk = calculate_risk(
+                disaster_id,
+                indicators_by_type[disaster_id],
+                raw_values_by_type.get(disaster_id),
+                risk_context,
+            )
         risk["indicator_details"] = build_indicator_details(
             disaster_id,
             risk["indicators"],
@@ -366,12 +380,21 @@ def _bounds_from_query(
 
 def _unavailable_risk(disaster_id: str, reason: str) -> dict[str, Any]:
     return {
+        "disaster": disaster_id,
+        "applicable": False,
+        "chance_percent": 0,
+        "time_window_days": None,
+        "severity_score": 0,
+        "overall_risk_score": 0,
         "risk_score": 0,
         "probability": 0,
         "risk_level": "Not Applicable",
+        "confidence": "Low",
+        "raw_hazard": 0,
         "hazard_index": 0,
         "disaster_type": disaster_id,
         "indicators": {},
+        "evidence_gate": {"triggered": True, "reason": reason},
         "calculation_engine": "real_data_unavailable",
         "explanation": reason,
         "recommendation": "Connect to the public API or choose another area/time before interpreting this prototype layer.",

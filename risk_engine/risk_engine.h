@@ -3,7 +3,6 @@
 
 double clamp(double value, double min, double max);
 const char *risk_level(double risk_score);
-double probability_from_unit_risk(double risk_unit, double k, double theta);
 
 double normalize_index(double value);
 double flood_hazard(double rainfall, double discharge_anomaly, double soil_moisture, double low_elevation);

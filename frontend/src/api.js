@@ -24,6 +24,14 @@ export async function getRiskForLocation(location) {
   return response.data;
 }
 
+export async function getRiskOverview() {
+  const response = await api.get("/api/risk/overview", {
+    params: { strict_real: true, fast: true, optional_providers: false },
+    timeout: 60000,
+  });
+  return response.data;
+}
+
 export async function getRiversForLocation(location, radiusKm = 15) {
   const boundsParams = boundsToParams(location.bounds);
   const response = await api.get("/api/map/rivers", {

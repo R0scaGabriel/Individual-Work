@@ -145,8 +145,17 @@ def build_risk_heatmap(disaster_type: str, lat: float, lon: float, radius_km: fl
         local_terrain = dict(terrain)
         local_terrain["slope_degrees"] = max(0, float(terrain.get("slope_degrees") or 0) + point["offset_weight"] * 4)
         local_weather = _adjust_weather_for_grid(weather, point["offset_weight"], disaster_type)
-        indicators = normalize_weather_indicators(local_weather, flood, local_location, local_terrain)[disaster_type]
-        risk = calculate_risk(disaster_type, indicators)
+        raw_by_type = extract_raw_indicator_values(local_weather, flood, local_location, local_terrain)
+        normalized_by_type = normalize_weather_indicators(local_weather, flood, local_location, local_terrain)
+        raw_details = raw_by_type[disaster_type]
+        indicators = normalized_by_type[disaster_type]
+        context = {
+            "terrain": local_terrain,
+            "flood_source": flood.get("source", "unknown"),
+            "weather_source": local_weather.get("source", "unknown"),
+            "applicable": True,
+        }
+        risk = calculate_risk(disaster_type, indicators, raw_details, context)
         points.append(
             {
                 "id": f"{disaster_type}-grid-{index}",
@@ -154,8 +163,14 @@ def build_risk_heatmap(disaster_type: str, lat: float, lon: float, radius_km: fl
                 "lon": point["lon"],
                 "intensity": round(risk["risk_score"] / 100, 3),
                 "risk_score": risk["risk_score"],
+                "chance_percent": risk.get("chance_percent", round(float(risk.get("probability", 0)) * 100, 1)),
+                "severity_score": risk.get("severity_score", 0),
+                "overall_risk_score": risk.get("overall_risk_score", risk["risk_score"]),
+                "confidence": risk.get("confidence", "Low"),
+                "raw_hazard": risk.get("raw_hazard", risk.get("hazard_index", 0)),
                 "risk_level": risk["risk_level"],
                 "indicators": indicators,
+                "indicator_details": build_indicator_details(disaster_type, indicators, raw_details),
             }
         )
 
@@ -281,7 +296,15 @@ def build_risk_grid(
 
         applicability = _applicability_for_cell(disaster_type, cell, raw_details, normalized, context)
         if applicability["applicable"]:
-            risk = calculate_risk(disaster_type, normalized)
+            risk = calculate_risk(
+                disaster_type,
+                normalized,
+                raw_details,
+                {
+                    **context,
+                    "applicable": True,
+                },
+            )
             reason = _positive_reason(disaster_type, raw_details, risk, context)
         else:
             risk = _not_applicable_result(disaster_type, normalized)
@@ -297,6 +320,13 @@ def build_risk_grid(
                 "cell_size_km": cell["cell_size_km"],
                 "disaster_type": disaster_type,
                 "risk_score": risk["risk_score"],
+                "chance_percent": risk.get("chance_percent", round(float(risk.get("probability", 0)) * 100, 1)),
+                "time_window_days": risk.get("time_window_days"),
+                "severity_score": risk.get("severity_score", 0),
+                "overall_risk_score": risk.get("overall_risk_score", risk["risk_score"]),
+                "confidence": risk.get("confidence", "Low"),
+                "raw_hazard": risk.get("raw_hazard", risk.get("hazard_index", 0)),
+                "event_definition": risk.get("event_definition"),
                 "risk_level": risk["risk_level"],
                 "probability": risk["probability"],
                 "model_family": risk.get("model_family", "Applicability mask"),
@@ -699,12 +729,21 @@ def _positive_reason(disaster_type: str, raw: dict[str, dict[str, Any]], risk: d
 
 def _not_applicable_result(disaster_type: str, indicators: dict[str, float]) -> dict[str, Any]:
     return {
+        "disaster": disaster_type,
+        "applicable": False,
+        "chance_percent": 0,
+        "time_window_days": None,
+        "severity_score": 0,
+        "overall_risk_score": 0,
         "risk_score": 0,
         "probability": 0,
         "risk_level": "Not Applicable",
+        "confidence": "Low",
+        "raw_hazard": 0,
         "hazard_index": 0,
         "disaster_type": disaster_type,
         "indicators": indicators,
+        "evidence_gate": {"triggered": True, "reason": "Applicability mask removed this cell from the hazard calculation."},
         "calculation_engine": "applicability_mask",
     }
 

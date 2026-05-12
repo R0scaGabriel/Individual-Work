@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import L from "leaflet";
 import { CircleMarker, GeoJSON, MapContainer, Marker, Popup, Rectangle, TileLayer, useMap } from "react-leaflet";
 import {
@@ -35,6 +35,7 @@ import {
   getDisasters,
   getEarthquakeMap,
   getLocations,
+  getRiskOverview,
   getRiskForLocation,
   getRiversForLocation,
 } from "./api";
@@ -77,6 +78,8 @@ const DISASTER_ACCENTS = {
   landslide: "#795548",
   avalanche: "#0c8599",
 };
+const GRID_RENDERER = L.canvas({ padding: 0.35 });
+const MAX_RENDERED_GRID_CELLS = 6500;
 
 function createMarkerIcon(level) {
   const color = LEVEL_COLORS[level] || "#64748b";
@@ -107,6 +110,31 @@ function FitBounds({ markers, activeLocation }) {
     const bounds = L.latLngBounds(markers.map((item) => [item.lat, item.lon]));
     map.fitBounds(bounds, { padding: [36, 36], maxZoom: 5 });
   }, [map, markers, activeLocation]);
+
+  return null;
+}
+
+function MapViewportTracker({ onChange }) {
+  const map = useMap();
+
+  useEffect(() => {
+    function syncViewport() {
+      const bounds = map.getBounds();
+      onChange({
+        south: Number(bounds.getSouth().toFixed(4)),
+        west: Number(bounds.getWest().toFixed(4)),
+        north: Number(bounds.getNorth().toFixed(4)),
+        east: Number(bounds.getEast().toFixed(4)),
+        zoom: map.getZoom(),
+      });
+    }
+
+    syncViewport();
+    map.on("moveend zoomend resize", syncViewport);
+    return () => {
+      map.off("moveend zoomend resize", syncViewport);
+    };
+  }, [map, onChange]);
 
   return null;
 }
@@ -143,6 +171,11 @@ function createUnavailableBundle(location, disasterData) {
       disaster_type: disaster.id,
       label: disaster.label,
       risk_score: 0,
+      chance_percent: 0,
+      severity_score: 0,
+      overall_risk_score: 0,
+      confidence: "Low",
+      raw_hazard: 0,
       probability: 0,
       risk_level: "Not Applicable",
       indicators: {},
@@ -170,6 +203,7 @@ function App() {
   const [rivers, setRivers] = useState(null);
   const [riskGrid, setRiskGrid] = useState([]);
   const [earthquakeMap, setEarthquakeMap] = useState({ events: [], heatmap_points: [] });
+  const [mapViewport, setMapViewport] = useState(null);
   const [loading, setLoading] = useState(true);
   const [mapLoading, setMapLoading] = useState(false);
   const [error, setError] = useState("");
@@ -178,10 +212,16 @@ function App() {
     setLoading(true);
     setError("");
     try {
-      const [locationData, disasterData] = await Promise.all([getLocations(), getDisasters()]);
+      const [locationData, disasterData, overviewBundles] = await Promise.all([
+        getLocations(),
+        getDisasters(),
+        getRiskOverview().catch(() => null),
+      ]);
       setLocations(locationData);
       setDisasters(disasterData);
-      const bundles = await loadRiskBundlesInBatches(locationData, disasterData, 4);
+      const bundles = overviewBundles?.length
+        ? overviewBundles
+        : await loadRiskBundlesInBatches(locationData, disasterData, 8);
       setRiskBundles(bundles);
       const records = bundles.flatMap((bundle) => bundle.results);
       setSelectedRisk(records.find((record) => record.disaster_type === selectedDisaster) || records[0] || null);
@@ -305,6 +345,7 @@ function App() {
   }, [filteredRisks, selectedLocation]);
 
   const displayedGrid = overviewGrid.length ? overviewGrid : riskGrid;
+  const renderedGrid = useMemo(() => filterRenderableGrid(displayedGrid, mapViewport), [displayedGrid, mapViewport]);
   const countryGridScores = useMemo(() => aggregateCountryGridScores(displayedGrid), [displayedGrid]);
 
   const scoredRisks = useMemo(() => {
@@ -316,8 +357,12 @@ function App() {
       return {
         ...item,
         risk_score: aggregate.average,
+        overall_risk_score: aggregate.average,
+        chance_percent: aggregate.chancePercent,
+        severity_score: aggregate.severityScore,
+        confidence: aggregate.confidence,
         risk_level: aggregate.level,
-        probability: probabilityFromScore(aggregate.average),
+        probability: aggregate.chancePercent / 100,
         explanation: `${item.label} country score is aggregated from ${aggregate.count} visible grid cells. Average score: ${aggregate.average.toFixed(1)}; maximum cell score: ${aggregate.max.toFixed(1)}.`,
         grid_cell_count: aggregate.count,
         max_grid_score: aggregate.max,
@@ -411,6 +456,22 @@ function App() {
       setSelectedRisk(matchingRisk);
     }
   }
+
+  const handleMapViewportChange = useCallback((nextViewport) => {
+    setMapViewport((previous) => {
+      if (
+        previous &&
+        previous.south === nextViewport.south &&
+        previous.west === nextViewport.west &&
+        previous.north === nextViewport.north &&
+        previous.east === nextViewport.east &&
+        previous.zoom === nextViewport.zoom
+      ) {
+        return previous;
+      }
+      return nextViewport;
+    });
+  }, []);
 
   return (
     <div className="min-h-screen bg-[#eef3f8] text-ink">
@@ -552,16 +613,17 @@ function App() {
                   </div>
                 </div>
                 <span className="text-xs font-semibold text-slate-500">
-                  {mapLoading ? "Loading layers" : `${displayedGrid.length} visible grid cells`}
+                  {mapLoading ? "Loading layers" : `${renderedGrid.length}/${displayedGrid.length} rendered grid cells`}
                 </span>
               </div>
               <div className="relative h-[512px]">
-                <MapContainer center={[45, 20]} zoom={3} scrollWheelZoom>
+                <MapContainer center={[45, 20]} zoom={3} scrollWheelZoom preferCanvas>
                   <TileLayer
                     attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
                     url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                   />
                   <FitBounds markers={mapMarkers} activeLocation={selectedLocation === "All" ? null : activeMapLocation} />
+                  <MapViewportTracker onChange={handleMapViewportChange} />
 
                   {rivers?.features?.length > 0 && (
                     <GeoJSON
@@ -574,10 +636,11 @@ function App() {
                     />
                   )}
 
-                  {displayedGrid.map((cell) => (
+                  {renderedGrid.map((cell) => (
                     <Rectangle
                       key={cell.id}
                       bounds={cell.bounds}
+                      renderer={GRID_RENDERER}
                       pathOptions={gridCellStyle(cell)}
                       eventHandlers={{
                         click: () => handleGridCellClick(cell),
@@ -668,8 +731,12 @@ function App() {
                     <RiskBadge level={selectedMapRecord.risk_level} />
                   </div>
                   <div className="grid grid-cols-2 gap-3 text-sm">
-                    <Metric label="Risk score" value={Number(selectedMapRecord.risk_score).toFixed(1)} />
-                    <Metric label="Probability-like estimate" value={`${Math.round(selectedMapRecord.probability * 100)}%`} />
+                    <Metric label="Chance" value={`${formatValue(selectedMapRecord.chance_percent ?? (selectedMapRecord.probability ?? 0) * 100)}%`} />
+                    <Metric label="Severity if it happens" value={`${formatValue(selectedMapRecord.severity_score)} / 100`} />
+                    <Metric label="Overall risk score" value={Number(selectedMapRecord.overall_risk_score ?? selectedMapRecord.risk_score).toFixed(1)} />
+                    <Metric label="Confidence" value={selectedMapRecord.confidence || "N/A"} />
+                    <Metric label="Raw hazard" value={`${formatValue((selectedMapRecord.raw_hazard ?? selectedMapRecord.hazard_index ?? 0) * 100)} / 100`} />
+                    {selectedMapRecord.time_window_days && <Metric label="Time window" value={`${selectedMapRecord.time_window_days} days`} />}
                     <Metric label="Model family" value={selectedMapRecord.model_family || "Academic risk proxy"} />
                     {selectedGridCell && <Metric label="Cell mode" value={selectedGridCell.overview ? "Fast overview" : selectedGridCell.applicable ? "Detailed applicable" : "Muted / not applicable"} />}
                     <Metric label="Temperature" value={`${selectedWeather.temperature_2m ?? "N/A"} C`} />
@@ -703,7 +770,7 @@ function App() {
                           <tr>
                             <th className="px-3 py-2">Indicator</th>
                             <th className="px-3 py-2">Value</th>
-                            <th className="px-3 py-2">Normalized</th>
+                            <th className="px-3 py-2">Index 0-100</th>
                             <th className="px-3 py-2">Why it matters</th>
                           </tr>
                         </thead>
@@ -913,6 +980,7 @@ function buildOverviewGrid(records, targetCellDegrees = 0.42) {
       const unavailable = record.risk_level === "Not Applicable" && Number(record.risk_score || 0) === 0;
       const level = unavailable ? "Not Applicable" : riskLevelFromScore(score);
       const locationName = record.locationName || record.location.name;
+      const chancePercent = unavailable ? 0 : Number(record.chance_percent ?? (record.probability || 0) * 100 ?? 0);
       cells.push({
         id: `overview-${record.location.id}-${record.disaster_type}-${row}-${col}`,
         lat: Number(lat.toFixed(5)),
@@ -923,8 +991,15 @@ function buildOverviewGrid(records, targetCellDegrees = 0.42) {
         ],
         disaster_type: record.disaster_type,
         risk_score: score,
+        overall_risk_score: score,
+        chance_percent: Number(clamp(chancePercent, 0, 95).toFixed(1)),
+        severity_score: Number(record.severity_score || 0),
+        confidence: record.confidence || "Moderate",
+        raw_hazard: Number(record.raw_hazard || record.hazard_index || 0),
+        time_window_days: record.time_window_days,
+        event_definition: record.event_definition,
         risk_level: level,
-        probability: unavailable ? 0 : probabilityFromScore(score),
+        probability: Number((clamp(chancePercent, 0, 95) / 100).toFixed(4)),
         applicable: !unavailable,
         overview: true,
         location: record.location,
@@ -1001,10 +1076,16 @@ function aggregateCountryGridScores(cells) {
       sum: 0,
       max: 0,
       applicableCount: 0,
+      chanceSum: 0,
+      severitySum: 0,
+      confidenceScoreSum: 0,
     };
     current.count += 1;
     current.sum += Number(cell.risk_score || 0);
     current.max = Math.max(current.max, Number(cell.risk_score || 0));
+    current.chanceSum += Number(cell.chance_percent || 0);
+    current.severitySum += Number(cell.severity_score || 0);
+    current.confidenceScoreSum += confidenceToNumber(cell.confidence);
     if (cell.applicable) {
       current.applicableCount += 1;
     }
@@ -1013,10 +1094,44 @@ function aggregateCountryGridScores(cells) {
 
   for (const aggregate of grouped.values()) {
     aggregate.average = aggregate.count ? Number((aggregate.sum / aggregate.count).toFixed(1)) : 0;
+    aggregate.chancePercent = aggregate.count ? Number((aggregate.chanceSum / aggregate.count).toFixed(1)) : 0;
+    aggregate.severityScore = aggregate.count ? Number((aggregate.severitySum / aggregate.count).toFixed(1)) : 0;
+    aggregate.confidence = numberToConfidence(aggregate.count ? aggregate.confidenceScoreSum / aggregate.count : 0);
     aggregate.level = aggregate.applicableCount ? riskLevelFromScore(aggregate.average) : "Not Applicable";
   }
 
   return grouped;
+}
+
+function filterRenderableGrid(cells, viewport) {
+  if (!cells.length) {
+    return [];
+  }
+
+  const viewportCells = viewport
+    ? cells.filter((cell) => cellBoundsIntersectViewport(cell.bounds, viewport))
+    : cells;
+
+  if (viewportCells.length <= MAX_RENDERED_GRID_CELLS) {
+    return viewportCells;
+  }
+
+  const stride = Math.ceil(viewportCells.length / MAX_RENDERED_GRID_CELLS);
+  return viewportCells.filter((_, index) => index % stride === 0).slice(0, MAX_RENDERED_GRID_CELLS);
+}
+
+function cellBoundsIntersectViewport(bounds, viewport) {
+  if (!bounds || bounds.length !== 2) {
+    return false;
+  }
+  const [[south, west], [north, east]] = bounds;
+  const margin = Math.max(0.4, 4 / Math.max(1, viewport.zoom || 1));
+  return (
+    north >= viewport.south - margin &&
+    south <= viewport.north + margin &&
+    east >= viewport.west - margin &&
+    west <= viewport.east + margin
+  );
 }
 
 function riskLevelFromScore(score) {
@@ -1032,8 +1147,27 @@ function riskLevelFromScore(score) {
   return "Critical";
 }
 
-function probabilityFromScore(score) {
-  return Number((1 / (1 + Math.exp(-((score - 50) / 10)))).toFixed(4));
+function confidenceToNumber(confidence) {
+  if (confidence === "High") {
+    return 3;
+  }
+  if (confidence === "Moderate") {
+    return 2;
+  }
+  if (confidence === "Low") {
+    return 1;
+  }
+  return 1.5;
+}
+
+function numberToConfidence(value) {
+  if (value >= 2.5) {
+    return "High";
+  }
+  if (value >= 1.5) {
+    return "Moderate";
+  }
+  return "Low";
 }
 
 function clamp(value, minimum, maximum) {
@@ -1131,10 +1265,14 @@ function ProviderStatusPanel({ providers }) {
               <p className="text-xs font-semibold uppercase text-slate-500">{formatProviderName(key)}</p>
               <span
                 className={`rounded px-2 py-0.5 text-[11px] font-bold ${
-                  provider?.status === "unavailable" ? "bg-slate-200 text-slate-600" : "bg-green-100 text-green-700"
+                  provider?.status === "unavailable"
+                    ? "bg-red-100 text-red-700"
+                    : provider?.status === "not_configured"
+                      ? "bg-amber-100 text-amber-800"
+                      : "bg-green-100 text-green-700"
                 }`}
               >
-                {provider?.status === "unavailable" ? "Off" : "On"}
+                {providerStatusBadge(provider)}
               </span>
             </div>
             <p className="mt-1 break-words text-sm font-bold">{formatProviderStatus(provider)}</p>
@@ -1147,22 +1285,37 @@ function ProviderStatusPanel({ providers }) {
 }
 
 function GridCellPopup({ cell }) {
-  const indicators = Object.entries(cell.indicators || {}).slice(0, 4);
+  const indicators = (cell.indicator_details || []).slice(0, 5);
   return (
     <div className="space-y-2">
       <p className="text-sm font-bold">{DISASTER_LABELS[cell.disaster_type]} grid cell</p>
-      <p className="text-xs text-slate-600">Risk score: {Number(cell.risk_score).toFixed(1)}</p>
-      <p className="text-xs text-slate-600">Probability-like estimate: {Math.round(cell.probability * 100)}%</p>
+      <p className="text-xs text-slate-600">Chance: {formatValue(cell.chance_percent ?? (cell.probability ?? 0) * 100)}%</p>
+      <p className="text-xs text-slate-600">Severity if it happens: {formatValue(cell.severity_score)} / 100</p>
+      <p className="text-xs text-slate-600">Overall risk score: {Number(cell.overall_risk_score ?? cell.risk_score).toFixed(1)}</p>
+      <p className="text-xs text-slate-600">Confidence: {cell.confidence || "N/A"}</p>
       <RiskBadge level={cell.risk_level} />
-      <p className="text-xs leading-5 text-slate-600">{cell.reason}</p>
       <div className="space-y-1 border-t border-slate-100 pt-2">
-        {indicators.map(([key, value]) => (
-          <div key={key} className="flex justify-between gap-3 text-xs">
-            <span className="capitalize text-slate-500">{key.replaceAll("_", " ")}</span>
-            <span className="font-semibold">{formatValue(value)}</span>
+        <p className="text-xs font-bold text-slate-700">Actual input data</p>
+        {indicators.length ? indicators.map((row) => (
+          <div key={row.key} className="grid grid-cols-[1fr_auto] gap-x-3 gap-y-0.5 text-xs">
+            <span className="text-slate-500">{row.label}</span>
+            <span className="font-semibold">
+              {formatValue(row.value)} {row.unit}
+            </span>
+            <span className="col-span-2 text-[11px] text-slate-400">
+              Index contribution: {Number(row.normalized_value || 0).toFixed(1)} / 100
+            </span>
           </div>
-        ))}
+        )) : (
+          Object.entries(cell.indicators || {}).slice(0, 5).map(([key, value]) => (
+            <div key={key} className="flex justify-between gap-3 text-xs">
+              <span className="capitalize text-slate-500">{key.replaceAll("_", " ")}</span>
+              <span className="font-semibold">{formatValue(value)}</span>
+            </div>
+          ))
+        )}
       </div>
+      <p className="border-t border-slate-100 pt-2 text-xs leading-5 text-slate-600">{cell.reason}</p>
     </div>
   );
 }
@@ -1223,6 +1376,16 @@ function formatProviderStatus(provider = {}) {
     return "Unavailable";
   }
   return provider.source || provider.status || "Not configured";
+}
+
+function providerStatusBadge(provider = {}) {
+  if (provider.status === "unavailable") {
+    return "Error";
+  }
+  if (provider.status === "not_configured") {
+    return "Setup";
+  }
+  return "On";
 }
 
 export default App;

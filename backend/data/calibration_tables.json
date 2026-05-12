@@ -1,0 +1,114 @@
+{
+  "flood": {
+    "horizon_days": 7,
+    "event_definition": "Chance of flood-producing conditions within the next 7 days.",
+    "bins": [
+      { "min": 0.0, "max": 0.1, "probability": 0.01 },
+      { "min": 0.1, "max": 0.2, "probability": 0.03 },
+      { "min": 0.2, "max": 0.3, "probability": 0.06 },
+      { "min": 0.3, "max": 0.4, "probability": 0.12 },
+      { "min": 0.4, "max": 0.5, "probability": 0.20 },
+      { "min": 0.5, "max": 0.6, "probability": 0.32 },
+      { "min": 0.6, "max": 0.7, "probability": 0.45 },
+      { "min": 0.7, "max": 0.8, "probability": 0.58 },
+      { "min": 0.8, "max": 0.9, "probability": 0.72 },
+      { "min": 0.9, "max": 1.01, "probability": 0.85 }
+    ]
+  },
+  "earthquake": {
+    "horizon_days": 7,
+    "event_definition": "Recent-earthquake impact and aftershock-aware risk context. This is not short-term earthquake prediction.",
+    "bins": [
+      { "min": 0.0, "max": 0.1, "probability": 0.001 },
+      { "min": 0.1, "max": 0.2, "probability": 0.003 },
+      { "min": 0.2, "max": 0.3, "probability": 0.007 },
+      { "min": 0.3, "max": 0.4, "probability": 0.015 },
+      { "min": 0.4, "max": 0.5, "probability": 0.03 },
+      { "min": 0.5, "max": 0.6, "probability": 0.06 },
+      { "min": 0.6, "max": 0.7, "probability": 0.10 },
+      { "min": 0.7, "max": 0.8, "probability": 0.16 },
+      { "min": 0.8, "max": 0.9, "probability": 0.24 },
+      { "min": 0.9, "max": 1.01, "probability": 0.35 }
+    ]
+  },
+  "wildfire": {
+    "horizon_days": 7,
+    "event_definition": "Chance of ignition or spread-favorable fire-weather conditions within the next 3-7 days.",
+    "bins": [
+      { "min": 0.0, "max": 0.1, "probability": 0.005 },
+      { "min": 0.1, "max": 0.2, "probability": 0.02 },
+      { "min": 0.2, "max": 0.3, "probability": 0.05 },
+      { "min": 0.3, "max": 0.4, "probability": 0.10 },
+      { "min": 0.4, "max": 0.5, "probability": 0.18 },
+      { "min": 0.5, "max": 0.6, "probability": 0.30 },
+      { "min": 0.6, "max": 0.7, "probability": 0.44 },
+      { "min": 0.7, "max": 0.8, "probability": 0.58 },
+      { "min": 0.8, "max": 0.9, "probability": 0.72 },
+      { "min": 0.9, "max": 1.01, "probability": 0.86 }
+    ]
+  },
+  "drought": {
+    "horizon_days": 30,
+    "event_definition": "Chance of drought developing or persisting within the next 30 days.",
+    "bins": [
+      { "min": 0.0, "max": 0.1, "probability": 0.02 },
+      { "min": 0.1, "max": 0.2, "probability": 0.05 },
+      { "min": 0.2, "max": 0.3, "probability": 0.09 },
+      { "min": 0.3, "max": 0.4, "probability": 0.16 },
+      { "min": 0.4, "max": 0.5, "probability": 0.25 },
+      { "min": 0.5, "max": 0.6, "probability": 0.36 },
+      { "min": 0.6, "max": 0.7, "probability": 0.50 },
+      { "min": 0.7, "max": 0.8, "probability": 0.64 },
+      { "min": 0.8, "max": 0.9, "probability": 0.78 },
+      { "min": 0.9, "max": 1.01, "probability": 0.90 }
+    ]
+  },
+  "heatwave": {
+    "horizon_days": 7,
+    "event_definition": "Chance of heat wave conditions within the next 7 days.",
+    "bins": [
+      { "min": 0.0, "max": 0.1, "probability": 0.005 },
+      { "min": 0.1, "max": 0.2, "probability": 0.02 },
+      { "min": 0.2, "max": 0.3, "probability": 0.05 },
+      { "min": 0.3, "max": 0.4, "probability": 0.12 },
+      { "min": 0.4, "max": 0.5, "probability": 0.22 },
+      { "min": 0.5, "max": 0.6, "probability": 0.34 },
+      { "min": 0.6, "max": 0.7, "probability": 0.48 },
+      { "min": 0.7, "max": 0.8, "probability": 0.63 },
+      { "min": 0.8, "max": 0.9, "probability": 0.78 },
+      { "min": 0.9, "max": 1.01, "probability": 0.90 }
+    ]
+  },
+  "landslide": {
+    "horizon_days": 3,
+    "event_definition": "Chance of rainfall-triggered landslide conditions within the next 3 days.",
+    "bins": [
+      { "min": 0.0, "max": 0.1, "probability": 0.002 },
+      { "min": 0.1, "max": 0.2, "probability": 0.01 },
+      { "min": 0.2, "max": 0.3, "probability": 0.03 },
+      { "min": 0.3, "max": 0.4, "probability": 0.07 },
+      { "min": 0.4, "max": 0.5, "probability": 0.14 },
+      { "min": 0.5, "max": 0.6, "probability": 0.25 },
+      { "min": 0.6, "max": 0.7, "probability": 0.39 },
+      { "min": 0.7, "max": 0.8, "probability": 0.54 },
+      { "min": 0.8, "max": 0.9, "probability": 0.70 },
+      { "min": 0.9, "max": 1.01, "probability": 0.84 }
+    ]
+  },
+  "avalanche": {
+    "horizon_days": 2,
+    "event_definition": "Chance of avalanche conditions within the next 48 hours.",
+    "bins": [
+      { "min": 0.0, "max": 0.1, "probability": 0.005 },
+      { "min": 0.1, "max": 0.2, "probability": 0.02 },
+      { "min": 0.2, "max": 0.3, "probability": 0.05 },
+      { "min": 0.3, "max": 0.4, "probability": 0.10 },
+      { "min": 0.4, "max": 0.5, "probability": 0.18 },
+      { "min": 0.5, "max": 0.6, "probability": 0.30 },
+      { "min": 0.6, "max": 0.7, "probability": 0.45 },
+      { "min": 0.7, "max": 0.8, "probability": 0.60 },
+      { "min": 0.8, "max": 0.9, "probability": 0.76 },
+      { "min": 0.9, "max": 1.01, "probability": 0.88 }
+    ]
+  }
+}

@@ -5,6 +5,25 @@
 
 #include "risk_engine.h"
 
+/*
+ * Academic prototype risk engine.
+ *
+ * Formal prototype structure, updated from the supplied research summary:
+ *
+ * H_d(x,t) = model-specific hazard proxy from normalized indicators
+ * Risk_d(x,t) = A_d(x,t) * H_d(x,t) * E(x) * V_d(x)
+ * P_d(x,t) is estimated later in Python by disaster-specific calibration
+ * tables. The C layer intentionally does not output a probability.
+ *
+ * For this student prototype E(x)=1 and V_d(x)=1. Applicability A_d is
+ * evaluated in Python because it depends on raw context such as snow depth,
+ * slope angle, river proximity, and recent earthquake distance. If A_d=0,
+ * Python returns "Not Applicable" without using this hazard score. Python sends
+ * indicators normalized from 0 to 100; this engine converts them to 0 to 1
+ * internally and returns a 0 to 100 score. These are simplified didactic
+ * proxies for established model families, not operational forecasts.
+ */
+
 double clamp(double value, double min, double max) {
     if (value < min) {
         return min;
@@ -26,10 +45,6 @@ const char *risk_level(double risk_score) {
         return "High";
     }
     return "Critical";
-}
-
-double probability_from_unit_risk(double risk_unit, double k, double theta) {
-    return 1.0 / (1.0 + exp(-(k * (risk_unit - theta))));
 }
 
 double normalize_index(double value) {
@@ -66,7 +81,11 @@ double flood_hazard(double rainfall, double discharge_anomaly, double soil_moist
         runoff_mm = pow(precipitation_mm - 0.2 * storage, 2.0) / (precipitation_mm + 0.8 * storage);
     }
     double runoff_ratio = clamp(runoff_mm / fmax(1.0, precipitation_mm), 0.0, 1.0);
-    return clamp(0.45 * runoff_ratio + 0.25 * discharge + 0.20 * soil + 0.10 * low, 0.0, 1.0);
+    double hazard = clamp(0.45 * runoff_ratio + 0.25 * discharge + 0.20 * soil + 0.10 * low, 0.0, 1.0);
+    if (rain < 0.18 && discharge < 0.20) {
+        hazard = fmin(hazard, 0.24);
+    }
+    return hazard;
 }
 
 double earthquake_hazard(double magnitude_index, double shallow_depth, double distance_decay, double exposure) {
@@ -102,7 +121,11 @@ double wildfire_hazard(double temperature, double wind, double dryness, double p
     double isi = dry * (0.35 + 1.65 * wind_unit);
     double bui = 0.60 * dry + 0.40 * precip_def;
     double fwi_proxy = saturating(1.7 * isi * bui);
-    return clamp(0.55 * fwi_proxy + 0.15 * temp + 0.20 * precip_def + 0.10 * active, 0.0, 1.0);
+    double hazard = clamp(0.55 * fwi_proxy + 0.15 * temp + 0.20 * precip_def + 0.10 * active, 0.0, 1.0);
+    if (dry < 0.25 && active < 0.20) {
+        hazard = fmin(hazard, 0.24);
+    }
+    return hazard;
 }
 
 double drought_hazard(double precipitation_deficit, double soil_moisture_deficit, double temperature_anomaly, double dry_days) {
@@ -116,7 +139,15 @@ double drought_hazard(double precipitation_deficit, double soil_moisture_deficit
     double evap_demand = normalize_index(temperature_anomaly);
     double persistence = normalize_index(dry_days);
     double spei_like = clamp(0.65 * spi_like + 0.35 * evap_demand, 0.0, 1.0);
-    return clamp(0.35 * spi_like + 0.25 * spei_like + 0.25 * soil_bucket_deficit + 0.15 * persistence, 0.0, 1.0);
+    double combined_deficit = sqrt(spi_like * soil_bucket_deficit);
+    double hazard = clamp(0.35 * spi_like + 0.25 * spei_like + 0.25 * combined_deficit + 0.15 * persistence, 0.0, 1.0);
+    if (persistence < 0.10 && spi_like < 0.60) {
+        hazard = fmin(hazard, 0.24);
+    }
+    if (spi_like < 0.25 && persistence < 0.20) {
+        hazard = fmin(hazard, 0.18);
+    }
+    return hazard;
 }
 
 double heatwave_hazard(double max_temperature_anomaly, double night_temperature_anomaly, double consecutive_hot_days, double apparent_temperature) {
@@ -131,7 +162,11 @@ double heatwave_hazard(double max_temperature_anomaly, double night_temperature_
     double apparent = normalize_index(apparent_temperature);
     double excess_heat_factor = clamp(max_anom * (0.45 + 0.35 * persistence + 0.20 * night_anom), 0.0, 1.0);
     double heat_index_proxy = clamp(0.60 * apparent + 0.25 * night_anom + 0.15 * max_anom, 0.0, 1.0);
-    return clamp(0.55 * excess_heat_factor + 0.30 * heat_index_proxy + 0.15 * persistence, 0.0, 1.0);
+    double hazard = clamp(0.55 * excess_heat_factor + 0.30 * heat_index_proxy + 0.15 * persistence, 0.0, 1.0);
+    if (persistence < 0.25 && max_anom < 0.45) {
+        hazard = fmin(hazard, 0.24);
+    }
+    return hazard;
 }
 
 double landslide_hazard(double rainfall_intensity, double antecedent_rainfall, double slope, double soil_moisture, double low_vegetation) {
@@ -149,7 +184,11 @@ double landslide_hazard(double rainfall_intensity, double antecedent_rainfall, d
     double resistance = 0.30 + 0.30 * (1.0 - low_veg) + 0.25 * (1.0 - soil) + 0.15 * (1.0 - slope_unit);
     double infinite_slope_instability = logistic_unit(driving - resistance, 7.0, 0.0);
     double id_threshold_proxy = clamp(intensity * pow(0.15 + antecedent, 0.55), 0.0, 1.0);
-    return clamp(0.62 * infinite_slope_instability + 0.38 * id_threshold_proxy, 0.0, 1.0);
+    double hazard = clamp(0.62 * infinite_slope_instability + 0.38 * id_threshold_proxy, 0.0, 1.0);
+    if (intensity < 0.20 && antecedent < 0.25) {
+        hazard = fmin(hazard, 0.24);
+    }
+    return hazard;
 }
 
 double avalanche_hazard(double recent_snowfall, double snow_depth, double slope_criticality, double wind_transport, double temperature_change, double snowpack_instability) {
@@ -170,23 +209,25 @@ double avalanche_hazard(double recent_snowfall, double snow_depth, double slope_
     double stability_index = strength / (load + 0.08);
     double stability_failure = clamp((1.55 - stability_index) / 1.55, 0.0, 1.0);
     double propagation_proxy = clamp(slope * (0.45 * snow + 0.35 * snowfall + 0.20 * wind), 0.0, 1.0);
-    return clamp(0.65 * stability_failure + 0.35 * propagation_proxy, 0.0, 1.0);
+    double hazard = clamp(0.65 * stability_failure + 0.35 * propagation_proxy, 0.0, 1.0);
+    if (snowfall < 0.15 && snow < 0.15) {
+        hazard = fmin(hazard, 0.20);
+    }
+    return hazard;
 }
 
 static void print_result(double hazard_unit) {
     const double exposure = 1.0;
     const double vulnerability = 1.0;
-    const double k = 12.0;
-    const double theta = 0.50;
-    double risk_unit = clamp(hazard_unit * exposure * vulnerability, 0.0, 1.0);
-    double risk_score = risk_unit * 100.0;
+    double hazard_score = clamp(hazard_unit * exposure * vulnerability, 0.0, 1.0) * 100.0;
 
     printf(
-        "{\"risk_score\":%.2f,\"probability\":%.4f,\"risk_level\":\"%s\",\"hazard_index\":%.4f}\n",
-        risk_score,
-        probability_from_unit_risk(risk_unit, k, theta),
-        risk_level(risk_score),
-        hazard_unit
+        "{\"hazard_score\":%.2f,\"hazard_index\":%.4f,\"hazard_level\":\"%s\",\"risk_score\":%.2f,\"risk_level\":\"%s\"}\n",
+        hazard_score,
+        hazard_unit,
+        risk_level(hazard_score),
+        hazard_score,
+        risk_level(hazard_score)
     );
 }
 
