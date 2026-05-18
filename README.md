@@ -12,6 +12,103 @@ This academic prototype estimates risk using public data and mathematical indica
 - Map data: OpenStreetMap Overpass API for waterways, OpenTopoData for optional terrain/elevation sampling
 - Data mode: public APIs with mock fallback data for offline student presentations
 
+## General Use Command Cheat Sheet
+
+Use these commands for normal local use. On this Windows setup, run the frontend and backend in two separate PowerShell windows.
+
+One-time C engine compile:
+
+```powershell
+cd "$env:USERPROFILE\Desktop\disaster-risk-system\risk_engine"
+gcc risk_engine.c -o risk_engine.exe -lm
+```
+
+If `-lm` fails:
+
+```powershell
+gcc risk_engine.c -o risk_engine.exe
+```
+
+Test the C engine directly:
+
+```powershell
+cd "$env:USERPROFILE\Desktop\disaster-risk-system\risk_engine"
+.\risk_engine.exe flood 70 60 55 40
+```
+
+Start the backend:
+
+```powershell
+cd "$env:USERPROFILE\Desktop\disaster-risk-system\backend"
+.\.venv\bin\python.exe -m uvicorn main:app --reload --host 127.0.0.1 --port 8000
+```
+
+If packages are missing:
+
+```powershell
+cd "$env:USERPROFILE\Desktop\disaster-risk-system\backend"
+.\.venv\bin\python.exe -m pip install -r requirements.txt
+```
+
+Check the backend health endpoint:
+
+```powershell
+Invoke-RestMethod http://127.0.0.1:8000/api/health
+```
+
+Start the frontend:
+
+```powershell
+cd "$env:USERPROFILE\Desktop\disaster-risk-system\frontend"
+$env:Path = "C:\Program Files\nodejs;$env:Path"
+& "C:\Program Files\nodejs\npm.cmd" run dev
+```
+
+If packages are missing:
+
+```powershell
+cd "$env:USERPROFILE\Desktop\disaster-risk-system\frontend"
+$env:Path = "C:\Program Files\nodejs;$env:Path"
+& "C:\Program Files\nodejs\npm.cmd" install
+```
+
+Open the dashboard:
+
+```text
+http://localhost:5173
+```
+
+Build the frontend for checking:
+
+```powershell
+cd "$env:USERPROFILE\Desktop\disaster-risk-system\frontend"
+$env:Path = "C:\Program Files\nodejs;$env:Path"
+& "C:\Program Files\nodejs\npm.cmd" run build
+```
+
+Git commands from the GitHub repository copy:
+
+```powershell
+cd "$env:USERPROFILE\Desktop\IW"
+git status
+git add README.md
+git commit -m "Update README run commands"
+git push origin master
+```
+
+Git Bash equivalents:
+
+```bash
+cd ~/Desktop/disaster-risk-system/risk_engine
+gcc risk_engine.c -o risk_engine.exe -lm
+
+cd ~/Desktop/disaster-risk-system/backend
+./.venv/bin/python.exe -m uvicorn main:app --reload --host 127.0.0.1 --port 8000
+
+cd ~/Desktop/disaster-risk-system/frontend
+npm run dev
+```
+
 ## Quick Windows PowerShell Commands
 
 Run these from PowerShell. Keep the backend and frontend running in two separate PowerShell windows.
