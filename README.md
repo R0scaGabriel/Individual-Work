@@ -19,7 +19,7 @@ Use these commands for normal local use. On this Windows setup, run the frontend
 One-time C engine compile:
 
 ```powershell
-cd "$env:USERPROFILE\Desktop\disaster-risk-system\risk_engine"
+cd "$env:USERPROFILE\FolderLocation\disaster-risk-system\risk_engine"
 gcc risk_engine.c -o risk_engine.exe -lm
 ```
 

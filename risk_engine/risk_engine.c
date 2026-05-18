@@ -5,24 +5,6 @@
 
 #include "risk_engine.h"
 
-/*
- * Academic prototype risk engine.
- *
- * Formal prototype structure, updated from the supplied research summary:
- *
- * H_d(x,t) = model-specific hazard proxy from normalized indicators
- * Risk_d(x,t) = A_d(x,t) * H_d(x,t) * E(x) * V_d(x)
- * P_d(x,t) is estimated later in Python by disaster-specific calibration
- * tables. The C layer intentionally does not output a probability.
- *
- * For this student prototype E(x)=1 and V_d(x)=1. Applicability A_d is
- * evaluated in Python because it depends on raw context such as snow depth,
- * slope angle, river proximity, and recent earthquake distance. If A_d=0,
- * Python returns "Not Applicable" without using this hazard score. Python sends
- * indicators normalized from 0 to 100; this engine converts them to 0 to 1
- * internally and returns a 0 to 100 score. These are simplified didactic
- * proxies for established model families, not operational forecasts.
- */
 
 double clamp(double value, double min, double max) {
     if (value < min) {
@@ -63,12 +45,7 @@ static double saturating(double value) {
 }
 
 double flood_hazard(double rainfall, double discharge_anomaly, double soil_moisture, double low_elevation) {
-    /*
-     * SCS-CN inspired event-runoff proxy:
-     * Pe = (P - 0.2S)^2 / (P + 0.8S), where CN controls S.
-     * Here CN is approximated from soil saturation and low-elevation
-     * susceptibility because the MVP does not have land-use/soil maps.
-     */
+    
     double rain = normalize_index(rainfall);
     double discharge = normalize_index(discharge_anomaly);
     double soil = normalize_index(soil_moisture);
@@ -89,13 +66,7 @@ double flood_hazard(double rainfall, double discharge_anomaly, double soil_moist
 }
 
 double earthquake_hazard(double magnitude_index, double shallow_depth, double distance_decay, double exposure) {
-    /*
-     * Gutenberg-Richter / Omori-ETAS inspired impact-rate proxy.
-     * The normalized magnitude index is converted back to an Mw-like 3-8
-     * range, then used as a productivity term. Distance decay and shallow
-     * depth modulate impact. This is monitoring/impact risk, not deterministic
-     * earthquake prediction.
-     */
+    
     double mag_unit = normalize_index(magnitude_index);
     double mag = 3.0 + mag_unit * 5.0;
     double shallow = normalize_index(shallow_depth);
@@ -107,12 +78,7 @@ double earthquake_hazard(double magnitude_index, double shallow_depth, double di
 }
 
 double wildfire_hazard(double temperature, double wind, double dryness, double precipitation_deficit, double active_fire_proximity) {
-    /*
-     * Canadian Fire Weather Index style proxy:
-     * ISI is approximated from wind and fine-fuel dryness, BUI from dryness and
-     * precipitation deficit, and FWI from their interaction. Active fire
-     * proximity is kept as ignition context when available.
-     */
+    
     double temp = normalize_index(temperature);
     double wind_unit = normalize_index(wind);
     double dry = normalize_index(dryness);
@@ -129,11 +95,7 @@ double wildfire_hazard(double temperature, double wind, double dryness, double p
 }
 
 double drought_hazard(double precipitation_deficit, double soil_moisture_deficit, double temperature_anomaly, double dry_days) {
-    /*
-     * SPI/SPEI/PDSI inspired proxy. SPI is approximated by precipitation
-     * deficit, SPEI by precipitation deficit plus temperature anomaly, and a
-     * bucket-model stress term by soil moisture deficit.
-     */
+    
     double spi_like = normalize_index(precipitation_deficit);
     double soil_bucket_deficit = normalize_index(soil_moisture_deficit);
     double evap_demand = normalize_index(temperature_anomaly);
@@ -151,11 +113,7 @@ double drought_hazard(double precipitation_deficit, double soil_moisture_deficit
 }
 
 double heatwave_hazard(double max_temperature_anomaly, double night_temperature_anomaly, double consecutive_hot_days, double apparent_temperature) {
-    /*
-     * Heat Index / Excess Heat Factor inspired proxy. Daytime anomaly,
-     * nighttime anomaly, persistence, and apparent temperature interact because
-     * heat-health risk grows when heat is intense and sustained.
-     */
+    
     double max_anom = normalize_index(max_temperature_anomaly);
     double night_anom = normalize_index(night_temperature_anomaly);
     double persistence = normalize_index(consecutive_hot_days);
@@ -170,11 +128,7 @@ double heatwave_hazard(double max_temperature_anomaly, double night_temperature_
 }
 
 double landslide_hazard(double rainfall_intensity, double antecedent_rainfall, double slope, double soil_moisture, double low_vegetation) {
-    /*
-     * Infinite-slope factor-of-safety and rainfall intensity-duration proxy.
-     * The project lacks geotechnical parameters, so cohesion/friction are
-     * represented by vegetation cover and soil wetness indicators.
-     */
+    
     double intensity = normalize_index(rainfall_intensity);
     double antecedent = normalize_index(antecedent_rainfall);
     double slope_unit = normalize_index(slope);
@@ -192,12 +146,7 @@ double landslide_hazard(double rainfall_intensity, double antecedent_rainfall, d
 }
 
 double avalanche_hazard(double recent_snowfall, double snow_depth, double slope_criticality, double wind_transport, double temperature_change, double snowpack_instability) {
-    /*
-     * Snow-slab stability-index proxy:
-     * SI = shear strength / gravitational + trigger load. Lower SI means
-     * higher instability. Slope criticality and snowpack instability approximate
-     * the weak-layer and propagation components discussed in avalanche models.
-     */
+   
     double snowfall = normalize_index(recent_snowfall);
     double snow = normalize_index(snow_depth);
     double slope = normalize_index(slope_criticality);
