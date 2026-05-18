@@ -179,6 +179,48 @@ disaster-risk-system/
 └── README.md
 ```
 
+## Monitored Countries / Regions
+
+The current system monitors 33 country-scale regions from `backend/data/sample_locations.json`. These areas are used for the country selector, overview cards, map grid aggregation, alerts, and comparison charts.
+
+Full alphabetical list:
+
+- Argentina
+- Austria
+- Belgium
+- Brazil
+- Bulgaria
+- Canada
+- Chile
+- Colombia
+- Croatia
+- Czechia
+- France
+- Germany
+- Greece
+- Hungary
+- Ireland
+- Italy
+- Japan
+- Mexico
+- Moldova
+- Nepal
+- Netherlands
+- Norway
+- Peru
+- Poland
+- Portugal
+- Romania
+- Spain
+- Sweden
+- Switzerland
+- Turkey
+- Ukraine
+- United Kingdom
+- United States
+
+These are prototype monitoring regions, not official emergency-management boundaries. The map grid uses country/region bounds and lightweight land/coast masks for demonstration purposes.
+
 ## Frontend Installation
 
 ```powershell
